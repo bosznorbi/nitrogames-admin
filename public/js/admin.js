@@ -75,6 +75,13 @@ async function loadOverview() {
     )
   );
 
+  $('mainQr').src = `/api/admin/qr?format=png&size=600&data=${encodeURIComponent(state.baseUrl)}`;
+  $('mainUrl').textContent = state.baseUrl;
+  $('mainUrl').href = state.baseUrl;
+  $('baseWarn').textContent = /localhost|127\.0\.0\.1/.test(state.baseUrl)
+    ? 'Figyelem: ez localhost cím, telefonról nem érhető el. A hálózati címen (192.168.x.x) vagy az éles domainen nyisd meg az admint, mielőtt QR-t nyomtatsz.'
+    : '';
+
   $('eventName').value = state.settings.event_name || '';
   $('introText').value = state.settings.intro_text || '';
   $('teamCount').value = c.teams_total;

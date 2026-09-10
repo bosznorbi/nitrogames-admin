@@ -35,7 +35,6 @@ app.use(
 app.use(express.json({ limit: '16mb' }));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 app.use(cookieParser());
-app.use(loadVoter);
 
 /* ---------- statikus fajlok ---------- */
 
@@ -51,6 +50,9 @@ app.use(
     setHeaders: (res) => res.set('X-Content-Type-Options', 'nosniff'),
   })
 );
+
+// A statikus fajlok utan, hogy minden CSS/kep keresre ne fusson DB iras.
+app.use(loadVoter);
 
 const view = (name) => (_req, res) => res.sendFile(path.join(VIEWS, name));
 
