@@ -5,16 +5,21 @@ fejlesztenek egy-egy játékot AI-jal, a résztvevők pedig telefonról, QR-kód
 beolvasásával pontozzák őket.
 
 - **Egy képernyő a szavazóknak.** A személyes QR beolvasása után egy 3x3-as
-  rács jön: a még nem pontozott játékok szürkék. A listából nem lehet
-  szavazni, csak a csapat QR-kódját beolvasva.
+  rács jön: a még nem pontozott játékok szürkék, a kész zöld keretet kap.
+  Új játékhoz csak a csapat QR-kódját beolvasva lehet eljutni, a rácsból nem.
+  Amire már szavaztál, azt a rácsról is módosíthatod.
 - **Névtelen belépő cetlik.** Mindenki kap egy papírt QR-rel és egy négybetűs
   kóddal. Nincs regisztráció, nincs név, a kódok anonimak.
 - **A csapatok maguk töltik fel a játékukat.** Csapatnév, játéknév, leírás,
   háttérkép és egy álló csempekép, papírról begépelhető kóddal, API-n keresztül.
 - **A szerver megmondja, mi hiányzik.** Egy végpont felsorolja, mit kell még
   beállítani ahhoz, hogy a csapat készen álljon.
+- **Négyfokozatú pontozás arcokkal.** Szám helyett négy rajzolt arc, a
+  szomorútól a nagyon örülőig.
+- **Eredményhirdetés.** Dobogó, minden csapatnév takarva, kattintásra fedi fel
+  egyesével. Holtversenyt is kezel. 16:9-en, görgetés nélkül.
 - **Admin felület.** Élő eredmények, szempontonkénti bontás, nyomtatható
-  PDF-ek, kivetítő nézet. Mobilon is használható.
+  PDF-ek. Mobilon is használható.
 - **Dinamikus szempontok.** Skála és súly is szerkeszthető, akár verseny közben.
 - **Arcade megjelenés.** Pixelfontok a repóban (nincs CDN-függés), kemény
   árnyékok, scanline. A Nitrowise logó a fejlécben, a faviconban és a
@@ -50,8 +55,9 @@ Első lépések az admin felületen (<http://localhost:3000/admin>):
    szavazólap QR-je végleges: egyszer generálódik, és a nullázás sem
    írja felül, tehát előre ki lehet nyomtatni mindent.
 2. **Szempontok** fül: nézd át az öt alapértelmezett szempontot.
-3. **Szavazók** fül: generálj annyi cetlit, ahányan lesztek, plusz tartalékot.
-4. **Áttekintés** fül: töltsd le a két PDF-et, és nyomtasd ki.
+3. **Szavazók** fül: add meg, hányan lesztek. Ez pontos célérték: felfelé
+   generál, lefelé eldobja a fölösleget.
+4. **Áttekintés** fül: nyisd meg a két PDF-et, és nyomtasd ki.
 5. Amikor kezdődik a szavazás, kapcsold be a **Szavazás nyitva** kapcsolót.
 
 ### A TESZT kód
@@ -216,8 +222,9 @@ ezért érdemes a csapatoknak tömörített képet feltölteni.
 1. Deploy, `PUBLIC_BASE_URL` beállítva, volume mountolva.
 2. Admin: csapatszám és szempontok véglegesítve, szavazók generálva.
 3. Nyomtatás az Áttekintés fülről:
-   - **Szavazói belépők** (24 db egy A4-en) felvágva, mindenki kap egyet.
-   - **Csapat belépők** (A5, kettő egy A4-en) félbevágva, csapatonként egy.
+   - **Szavazói belépők**, 16 db egy A4-en, felvágva, mindenki kap egyet.
+   - **Csapat belépők**: a lap pontosan harmadolva, két vágással három
+     egyforma lap lesz belőle, csapatonként egy.
 4. A szavazás **zárva** marad, amíg a fejlesztés tart.
 
 **Fejlesztés alatt**
@@ -239,8 +246,10 @@ Az admin **Csapatok** fülén látszik, melyik csapatnak mi hiányzik még.
 **Díjkiosztó**
 
 1. Admin: **Szavazás nyitva** ki.
-2. Kivetítő nézet (`/admin/eredmeny`), a *Pontok elrejtése* kapcsolóval
-   felvezethető az eredményhirdetés.
+2. Nyisd meg az **Eredményhirdetést** (`/admin/eredmeny`) teljes képernyőn.
+   Minden csapatnév takarva indul, és kattintásra fedi fel egyesével, tehát
+   te döntöd el élőben a sorrendet. A pontszámok végig látszanak, a
+   kategóriagyőztesek külön gombra nyílnak, hogy ne spoilerezzenek.
 
 ## Csapat API
 
@@ -306,10 +315,10 @@ curl -H "Authorization: Bearer ABCD-1234" \
 | `/t/:azonosito` | Egy csapat szavazólapja, csak QR-ből érhető el |
 | `/csapat` | Csapat konzol, kóddal |
 | `/admin` | Admin felület (jelszó) |
-| `/admin/qr-kodok` | A csapatok szavazó QR-kódjai egy rácsban, képernyőről beolvasva |
-| `/admin/eredmeny` | Kivetítő nézet |
-| `/api/admin/print/voters.pdf` | Szavazói belépők (`?cols=3..6`, `?only_new=1`) |
-| `/api/admin/print/teams.pdf` | Csapat belépők, A5, kettő egy A4-en |
+| `/admin/qr-kodok` | A csapatok szavazó QR-kódjai egy rácsban, kattintásra nagyban |
+| `/admin/eredmeny` | Eredményhirdetés: dobogó, felfedős |
+| `/api/admin/print/voters.pdf` | Szavazói belépők, 16 db egy A4-en |
+| `/api/admin/print/teams.pdf` | Csapat belépők, három egyforma sáv egy A4-en |
 | `/healthz` | Állapotellenőrzés |
 
 A PDF-ek `?nezet=inline` paraméterrel a böngészőben nyílnak meg letöltés
@@ -334,6 +343,20 @@ A Nitrowise logó a `public/img/` mappában:
 
 Az esemény neve **Nitrogames**, a cégé **Nitrowise**: a fejlécben a Nitrowise
 jel áll az esemény neve mellett.
+
+## Pontozás és holtverseny
+
+A szavazók négyfokozatú skálán pontoznak, számok helyett arcokkal. Az arcokat
+mi rajzoljuk, nem Unicode emojik: azok platformonként másképp néznek ki, és
+színes rajzként kilógnának a felület stílusából.
+
+Nem kötelező minden szempontot kitölteni, és a szöveges megjegyzés is
+opcionális. Ezek be vannak égetve, nincs rájuk kapcsoló az adminban.
+
+A helyezéseket **sűrű rangsorral** számoljuk: az azonos pontszámúak ugyanazt a
+helyet kapják, és a következő pontszám a rá következő helyre kerül. Így két
+első hely után is van második és harmadik, tehát holtversenynél is mindhárom
+dobogós hely gazdára talál.
 
 ## Hogyan számoljuk az eredményt
 
