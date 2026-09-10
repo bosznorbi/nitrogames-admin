@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0b10">
+<meta name="robots" content="noindex">
+<title>Csapat konzol</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/admin.css">
+<style>
+  .team-wrap { max-width: 880px; margin: 0 auto; padding: 0 16px 60px; }
+  pre.code {
+    background: rgba(0, 0, 0, 0.42);
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    padding: 13px 14px;
+    overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 0 0 12px;
+    white-space: pre;
+  }
+  .todo { display: grid; gap: 8px; }
+  .todo-item {
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    gap: 11px;
+    align-items: start;
+    padding: 11px 13px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .todo-item.ok { border-color: rgba(46, 230, 168, 0.35); background: rgba(46, 230, 168, 0.07); }
+  .todo-mark {
+    width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 13px; font-weight: 800;
+    background: var(--surface-2); color: var(--muted);
+  }
+  .todo-item.ok .todo-mark { background: var(--ok); color: #06281d; }
+  .todo-item strong { display: block; font-size: 14px; font-weight: 620; }
+  .todo-item code {
+    display: block; margin-top: 5px; font-size: 11.5px; color: var(--muted);
+    font-family: ui-monospace, Menlo, Consolas, monospace; word-break: break-all;
+  }
+  .ep { display: grid; grid-template-columns: 66px 1fr; gap: 9px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .ep:last-child { border-bottom: none; }
+  .ep b { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; color: var(--ok); }
+  .ep code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; word-break: break-all; }
+  .ep span { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .preview { display: grid; grid-template-columns: 120px 1fr; gap: 16px; align-items: start; }
+  .preview .phone {
+    width: 120px; aspect-ratio: 9 / 16; border-radius: 14px; border: 1px solid var(--line-strong);
+    background: #fff center / cover no-repeat; display: grid; place-items: center;
+    color: #8b93a5; font-size: 11px; text-align: center; padding: 9px;
+  }
+  .tile-preview {
+    width: 74px; aspect-ratio: 1; border-radius: 14px; border: 1px solid var(--line-strong);
+    background: var(--bg-2) center / contain no-repeat; display: grid; place-items: center;
+    color: var(--muted); font-size: 11px; text-align: center; padding: 6px;
+  }
+  .big-code {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 26px; font-weight: 700; letter-spacing: 0.12em;
+  }
+  @media (max-width: 600px) { .preview { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="team-wrap">
+  <div class="admin-top">
+    <div class="row tight">
+      <a class="back" href="/" aria-label="Vissza">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+      </a>
+      <span class="brand"><span class="dot"></span><span>Csapat konzol</span></span>
+    </div>
+    <button class="mini" id="forget" hidden>Kód elfelejtése</button>
+  </div>
+
+  <section id="login">
+    <h1>Csapatkód</h1>
+    <p class="lead">
+      A papírotokon van egy nyolc karakteres kód. Írd be, és látod, mit kell még
+      beállítani a játékotokhoz, illetve letöltheted a saját QR-kódotokat.
+    </p>
+    <div class="card">
+      <label class="field">
+        <span>Kód a papírról</span>
+        <input type="text" id="code" class="code-input" style="font-size:20px;letter-spacing:0.18em;text-indent:0.18em"
+               placeholder="ABCD-1234" maxlength="9" autocapitalize="characters" autocorrect="off" spellcheck="false">
+      </label>
+      <button class="btn block" id="connect">Csatlakozás</button>
+      <div class="note err" id="loginErr" hidden style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <section id="console" hidden></section>
+</div>
+
+<script type="module" src="/static/js/csapat.js"></script>
+</body>
+</html>

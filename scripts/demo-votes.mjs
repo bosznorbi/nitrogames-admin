@@ -59,7 +59,6 @@ db.transaction(() => {
     const generosity = 0.75 + Math.random() * 0.5; // van, aki szigorubb
 
     for (const team of teams) {
-      if (voter.team_id === team.id) continue;
       if (Math.random() > 0.9) continue; // par szavazat hianyzik
 
       for (const c of criteria) {

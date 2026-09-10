@@ -12,113 +12,110 @@
 <body>
 
 <header class="topbar">
-  <a class="brand" href="/"><span class="dot"></span><span id="eventName">Nitrogames</span></a>
-  <a class="who" href="/me" id="who" hidden></a>
+  <span class="brand"><span class="dot"></span><span id="eventName">Nitrogames</span></span>
 </header>
 
 <main class="wrap">
-  <div id="closedBanner" class="note warn" hidden style="margin-bottom:16px">
-    A szavazás jelenleg <strong>zárva</strong>. Amint megnyitjuk, itt tudsz pontozni.
+  <div id="banner"></div>
+
+  <div class="progress-ring">
+    <b id="progressText">…</b>
+    <span id="progressSub"></span>
   </div>
+  <div class="bar" style="margin-bottom:18px"><i id="progressBar"></i></div>
 
-  <h1 id="title">Csapatok</h1>
-  <p class="lead" id="intro">Töltés…</p>
-
-  <div id="progressWrap" hidden>
-    <div class="progress-line">
-      <span id="progressText"></span>
-      <span id="progressPct" class="muted"></span>
-    </div>
-    <div class="bar"><i id="progressBar"></i></div>
-  </div>
-
-  <ul class="team-grid" id="teams">
-    <li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li>
+  <ul class="tiles" id="tiles">
+    <li class="tile"></li><li class="tile"></li><li class="tile"></li>
+    <li class="tile"></li><li class="tile"></li><li class="tile"></li>
   </ul>
 
   <div class="spacer"></div>
-  <p class="small muted center">
-    Egy csapat pontozásához olvasd be a tábláján lévő QR-kódot, vagy koppints rá a listában.
+  <p class="small muted center" id="hint">
+    Egy játék pontozásához olvasd be a csapat asztalán lévő QR-kódot.
   </p>
-
-  <div class="spacer"></div>
-  <div class="center"><button class="btn quiet" id="logout">Kilépés (nem én vagyok)</button></div>
 </main>
 
 <script type="module">
-import { api, el, esc, toast } from '/static/js/app.js';
+import { api, el, toast } from '/static/js/app.js';
 
 const $ = (id) => document.getElementById(id);
 
-async function load() {
-  let cfg;
-  try {
-    cfg = await api('/api/config');
-  } catch (err) {
-    $('intro').textContent = 'Nem sikerült betölteni. Frissítsd az oldalt.';
-    return;
-  }
+/** A frissen leadott szavazat csempéje, az URL-ből. */
+const params = new URLSearchParams(location.search);
+const justVoted = params.get('szavaztam');
+if (justVoted) history.replaceState(null, '', '/');
 
-  document.title = `${cfg.event_name} szavazás`;
-  $('eventName').textContent = cfg.event_name;
-  $('intro').textContent = cfg.intro_text || '';
-  $('closedBanner').hidden = cfg.voting_open;
+function tileNode(t, celebrate) {
+  const art = el('div', {
+    class: 'tile-art',
+    style: { backgroundImage: iconFor(t) },
+  }, iconFor(t) ? '' : String(t.number));
 
-  if (!cfg.voter) {
-    location.replace('/join?next=' + encodeURIComponent('/'));
-    return;
-  }
-
-  const who = $('who');
-  who.hidden = false;
-  who.textContent = cfg.voter.name || `Kód: ${cfg.voter.code}`;
-
-  const { teams } = await api('/api/teams');
-  const list = $('teams');
-  list.replaceChildren();
-
-  if (!teams.length) {
-    list.append(el('li', { class: 'note' }, 'Még nincsenek csapatok felvéve.'));
-    return;
-  }
-
-  for (const t of teams) {
-    const thumb = el('div', {
-      class: 'team-thumb',
-      style: t.background_url ? { backgroundImage: `url("${t.background_url}")` } : {},
-    }, t.background_url ? '' : String(t.number));
-
-    const title = t.game_name || t.name;
-    const bits = [];
-    if (title !== `${t.number}. csapat`) bits.push(`${t.number}. csapat`);
-    if (t.game_name && t.name !== title) bits.push(t.name);
-    if (!bits.length) bits.push('Még nincs feltöltött játék');
-
-    list.append(
-      el('li', {},
-        el('a', { class: 'team-item', href: `/t/${t.slug}`, style: { '--team': t.accent_color } },
-          thumb,
-          el('div', { class: 'team-body' },
-            el('div', { class: 'team-name' }, title),
-            el('div', { class: 'team-sub' }, bits.join(' · '))
-          ),
-          el('span', { class: `pill ${t.voted ? 'done' : ''}` }, t.voted ? 'Kész' : 'Pontozás')
-        )
-      )
-    );
-  }
-
-  const done = teams.filter((t) => t.voted).length;
-  $('progressWrap').hidden = false;
-  $('progressText').textContent = `${done} / ${teams.length} csapatot pontoztál`;
-  $('progressPct').textContent = done === teams.length ? 'Mindennel megvagy' : '';
-  $('progressBar').style.width = `${Math.round((done / teams.length) * 100)}%`;
+  return el('li', {
+    class: `tile ${t.voted ? 'done' : ''} ${celebrate ? 'celebrate' : ''}`,
+    style: { '--team': t.accent_color },
+    dataset: { id: t.public_id },
+  },
+    art,
+    el('div', { class: 'tile-name' }, t.label),
+    el('div', { class: 'tile-check' }, '✓')
+  );
 }
 
-$('logout').addEventListener('click', async () => {
-  await api('/api/session/logout', { method: 'POST' }).catch(() => {});
-  location.href = '/join';
-});
+function iconFor(t) {
+  const url = t.voted ? (t.icon_done_url || t.icon_url) : t.icon_url;
+  return url ? `url("${url}")` : '';
+}
+
+async function load() {
+  let data;
+  try {
+    data = await api('/api/home');
+  } catch (err) {
+    if (err.status === 401) {
+      location.replace('/belepes?next=' + encodeURIComponent('/'));
+      return;
+    }
+    throw err;
+  }
+
+  document.title = `${data.event_name} szavazás`;
+  $('eventName').textContent = data.event_name;
+
+  const remaining = data.total - data.done;
+  $('progressText').textContent = data.total === 0
+    ? 'Még nincs csapat'
+    : `${data.done} / ${data.total}`;
+  $('progressSub').textContent = data.total === 0
+    ? ''
+    : remaining === 0
+      ? 'mindegyikre szavaztál'
+      : `még ${remaining} játék van hátra`;
+  $('progressBar').style.width = data.total ? `${Math.round((data.done / data.total) * 100)}%` : '0%';
+
+  $('banner').replaceChildren(
+    data.voting_open
+      ? el('div', { class: 'ready-banner' },
+          el('div', { class: 'mark' }, '✓'),
+          el('div', {},
+            el('strong', {}, data.ready_text || 'Minden készen áll!'),
+            el('span', {}, 'Járd végig a játékokat, és olvasd be a QR-kódjukat.')
+          )
+        )
+      : el('div', { class: 'note warn', style: { marginBottom: '18px' } },
+          'A szavazás még nem indult el. Ez az oldal a tiéd, nyugodtan bezárhatod, a telefonod megjegyzett.')
+  );
+
+  $('tiles').replaceChildren(...data.teams.map((t) => tileNode(t, t.public_id === justVoted)));
+  $('hint').textContent = remaining === 0 && data.total > 0
+    ? 'Minden játékot pontoztál. Köszönjük!'
+    : 'Egy játék pontozásához olvasd be a csapat asztalán lévő QR-kódot.';
+
+  if (justVoted) {
+    const node = document.querySelector(`.tile[data-id="${CSS.escape(justVoted)}"]`);
+    if (node) node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+}
 
 load().catch((err) => toast(err.message, true));
 </script>

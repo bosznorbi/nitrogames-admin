@@ -3,7 +3,7 @@
 .admin-shell {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 0 20px 60px;
+  padding: 0 16px 60px;
 }
 
 .admin-top {
@@ -451,5 +451,77 @@ code.key:hover { border-color: var(--accent); }
 
 @media (max-width: 720px) {
   .sheet.voters, .sheet.teams { grid-template-columns: repeat(2, 1fr); }
-  .admin-shell { padding: 0 14px 50px; }
+}
+
+/* ---------- mobil ---------- */
+
+@media (max-width: 780px) {
+  .admin-top { padding: 14px 0; }
+  .admin-top .brand { font-size: 15px; }
+
+  .tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { padding: 11px 12px; white-space: nowrap; }
+
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stat b { font-size: 22px; }
+
+  .big-toggle { padding: 15px 16px; }
+
+  /* A tablazatok sorai kartyakka valnak, a fejlec eltunik. */
+  .scroll-x { overflow-x: visible; }
+
+  table.grid:not(.keep-table),
+  table.grid:not(.keep-table) tbody,
+  table.grid:not(.keep-table) tr,
+  table.grid:not(.keep-table) td { display: block; width: 100%; }
+  table.grid:not(.keep-table) thead { display: none; }
+
+  /* A reszletes bontas tul sok oszlop, az marad valodi tablazat es gorgetheto. */
+  .scroll-x.keep { overflow-x: auto; }
+  table.grid.keep-table { min-width: 520px; font-size: 13px; }
+  table.grid.keep-table td, table.grid.keep-table th { padding: 8px 7px; }
+
+  table.grid:not(.keep-table) tr {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 4px 12px 10px;
+    margin-bottom: 10px;
+  }
+
+  table.grid:not(.keep-table) tr:hover td { background: transparent; }
+
+  table.grid:not(.keep-table) td {
+    border: none;
+    border-bottom: 1px solid var(--line);
+    padding: 9px 0;
+    text-align: left;
+  }
+
+  table.grid:not(.keep-table) td:last-child { border-bottom: none; }
+
+  table.grid:not(.keep-table) td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  table.grid td input[type='text'],
+  table.grid td input[type='number'],
+  table.grid td select { width: 100% !important; max-width: 100%; }
+
+  .rank { grid-template-columns: 36px 1fr auto; padding: 12px 13px; gap: 10px; }
+  .rank-score b { font-size: 18px; }
+  .winners { grid-template-columns: 1fr; }
 }

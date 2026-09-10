@@ -34,7 +34,9 @@
     <div class="row tight no-print">
       <label class="switch"><input type="checkbox" id="blur"><i></i><span>Pontok elrejtése</span></label>
       <button class="mini" id="refresh">Frissítés</button>
-      <a class="mini" href="/admin">Admin</a>
+      <a class="back" href="/admin" aria-label="Vissza az adminba">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+      </a>
     </div>
   </div>
 
@@ -51,10 +53,7 @@ const $ = (id) => document.getElementById(id);
 
 /** Ne ismetlodjon a cim, ha a csapatnak meg nincs jatekneve. */
 function rankSub(t) {
-  const title = t.game_name || t.name;
-  return title === `${t.number}. csapat`
-    ? `${t.voters} szavazó`
-    : `${t.number}. csapat · ${t.voters} szavazó`;
+  return `${t.number}. csapat · ${t.voters} szavazó`;
 }
 
 async function load() {
@@ -71,7 +70,7 @@ async function load() {
       el('div', { class: 'rank', style: { '--team': t.accent_color } },
         el('div', { class: 'rank-pos' }, t.rank ? String(t.rank) : '-'),
         el('div', {},
-          el('div', { class: 'rank-title' }, t.game_name || t.name),
+          el('div', { class: 'rank-title' }, t.label),
           el('div', { class: 'rank-sub' }, rankSub(t)),
           el('div', { class: 'meter' }, el('i', {
             style: { width: `${t.total_pct === null ? 0 : Math.round((t.total_pct / (maxPct || 1)) * 100)}%` },
@@ -91,7 +90,7 @@ async function load() {
         el('small', {}, w.label),
         w.winner
           ? el('div', {},
-              el('b', {}, w.winner.game_name || w.winner.name),
+              el('b', {}, w.winner.label),
               el('span', {}, `${w.winner.number}. csapat · átlag ${w.winner.avg}`))
           : el('span', {}, 'Még nincs szavazat')
       )

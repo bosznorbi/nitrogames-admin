@@ -2,39 +2,28 @@ import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { config, baseUrl } from '../config.js';
-import { allSettings, createTeam, createVoters, db, getBool, setSetting } from '../db.js';
+import {
+  allSettings, createTeam, createVoters, db, ensureTestVoter, getBool, setSetting, teamLabel, TEST_CODE,
+} from '../db.js';
 import { ADMIN_COOKIE, adminCookieOpts, rateLimit, requireAdmin, signAdminSession } from '../middleware/auth.js';
-import { apiKey, safeEqual, slugify } from '../lib/ids.js';
+import { formatCode, safeEqual, slugify, teamCode } from '../lib/ids.js';
 import { qrPngBuffer, qrSvg } from '../lib/qr.js';
-import { teamsPdf, votersPdf } from '../lib/pdf.js';
+import { teamSheetPdf, votersPdf } from '../lib/pdf.js';
 
 export const adminRouter = express.Router();
 
-const EDITABLE_SETTINGS = [
-  'voting_open',
-  'results_public',
-  'allow_self_vote',
-  'require_all_criteria',
-  'allow_comments',
-  'allow_self_register',
-  'event_name',
-  'intro_text',
-];
+const EDITABLE_SETTINGS = ['voting_open', 'require_all_criteria', 'allow_comments', 'event_name', 'ready_text'];
 
 /* ---------- session ---------- */
 
-adminRouter.post(
-  '/login',
-  rateLimit({ windowMs: 60000, max: 10 }),
-  (req, res) => {
-    const password = String((req.body && req.body.password) || '');
-    if (!safeEqual(password, config.adminPassword)) {
-      return res.status(401).json({ error: 'bad_password', message: 'Hibás jelszó.' });
-    }
-    res.cookie(ADMIN_COOKIE, signAdminSession(), adminCookieOpts());
-    res.json({ ok: true });
+adminRouter.post('/login', rateLimit({ windowMs: 60000, max: 10 }), (req, res) => {
+  const password = String((req.body && req.body.password) || '');
+  if (!safeEqual(password, config.adminPassword)) {
+    return res.status(401).json({ error: 'bad_password', message: 'Hibás jelszó.' });
   }
-);
+  res.cookie(ADMIN_COOKIE, signAdminSession(), adminCookieOpts());
+  res.json({ ok: true });
+});
 
 adminRouter.post('/logout', (_req, res) => {
   res.clearCookie(ADMIN_COOKIE, { path: '/' });
@@ -43,16 +32,20 @@ adminRouter.post('/logout', (_req, res) => {
 
 adminRouter.use(requireAdmin);
 
-/* ---------- attekintes es beallitasok ---------- */
+/* ---------- attekintes ---------- */
 
 adminRouter.get('/overview', (req, res) => {
   const one = (sql) => db.prepare(sql).get().c;
   res.json({
     settings: allSettings(),
     base_url: baseUrl(req),
+    test_code: TEST_CODE,
     counts: {
       teams: one('SELECT COUNT(*) AS c FROM teams WHERE active = 1'),
       teams_total: one('SELECT COUNT(*) AS c FROM teams'),
+      teams_ready: one(`SELECT COUNT(*) AS c FROM teams WHERE active = 1
+        AND name IS NOT NULL AND game_name IS NOT NULL AND description IS NOT NULL
+        AND background_file IS NOT NULL AND icon_file IS NOT NULL AND qr_fetched_at IS NOT NULL`),
       criteria: one('SELECT COUNT(*) AS c FROM criteria WHERE active = 1'),
       voters: one('SELECT COUNT(*) AS c FROM voters'),
       voters_activated: one('SELECT COUNT(*) AS c FROM voters WHERE is_activated = 1'),
@@ -60,7 +53,6 @@ adminRouter.get('/overview', (req, res) => {
       submissions: one('SELECT COUNT(*) AS c FROM submissions'),
       votes: one('SELECT COUNT(*) AS c FROM votes'),
     },
-    image_spec: config.image,
   });
 });
 
@@ -81,30 +73,37 @@ adminRouter.put('/settings', (req, res) => {
 /* ---------- csapatok ---------- */
 
 function teamRow(t, base) {
+  const missing = [];
+  if (!t.name) missing.push('csapatnév');
+  if (!t.game_name) missing.push('játék neve');
+  if (!t.description) missing.push('leírás');
+  if (!t.background_file) missing.push('háttérkép');
+  if (!t.icon_file) missing.push('csempekép');
+  if (!t.qr_fetched_at) missing.push('QR lekérés');
+
   return {
     id: t.id,
-    slug: t.slug,
+    public_id: t.public_id,
     number: t.number,
+    code: formatCode(t.api_code),
     name: t.name,
     game_name: t.game_name,
-    tagline: t.tagline,
-    description: t.description,
+    label: teamLabel(t),
     accent_color: t.accent_color,
     active: Boolean(t.active),
-    api_key: t.api_key,
     background_url: t.background_file ? `/uploads/${t.background_file}` : null,
-    logo_url: t.logo_file ? `/uploads/${t.logo_file}` : null,
-    vote_url: `${base}/t/${t.slug}`,
-    qr_png: `/api/admin/qr?format=png&data=${encodeURIComponent(`${base}/t/${t.slug}`)}`,
+    icon_url: t.icon_file ? `/uploads/${t.icon_file}` : null,
+    icon_done_url: t.icon_done_file ? `/uploads/${t.icon_done_file}` : null,
+    vote_url: `${base}/t/${t.public_id}`,
+    ready: missing.length === 0,
+    missing,
     voters: db.prepare('SELECT COUNT(*) AS c FROM submissions WHERE team_id = ?').get(t.id).c,
-    updated_at: t.updated_at,
   };
 }
 
 adminRouter.get('/teams', (req, res) => {
   const base = baseUrl(req);
-  const teams = db.prepare('SELECT * FROM teams ORDER BY number').all();
-  res.json({ teams: teams.map((t) => teamRow(t, base)) });
+  res.json({ teams: db.prepare('SELECT * FROM teams ORDER BY number').all().map((t) => teamRow(t, base)) });
 });
 
 adminRouter.post('/teams', (req, res) => {
@@ -117,56 +116,45 @@ adminRouter.post('/teams', (req, res) => {
       return res.status(400).json({ error: 'invalid_count', message: 'A csapatszám 0 és 100 között legyen.' });
     }
     const existing = db.prepare('SELECT COUNT(*) AS c FROM teams').get().c;
-    const created = [];
-    for (let i = existing + 1; i <= target; i++) created.push(createTeam({ number: i }));
+    let created = 0;
+    for (let i = existing + 1; i <= target; i++) {
+      createTeam({ number: i });
+      created++;
+    }
     return res.json({
       ok: true,
-      created: created.length,
+      created,
       teams: db.prepare('SELECT * FROM teams ORDER BY number').all().map((t) => teamRow(t, base)),
     });
   }
 
-  const name = String(body.name || '').trim();
-  const number = db.prepare('SELECT COALESCE(MAX(number), 0) AS m FROM teams').get().m + 1;
-  let slug = body.slug ? slugify(body.slug) : `csapat-${number}`;
-  if (db.prepare('SELECT 1 FROM teams WHERE slug = ?').get(slug)) slug = `${slug}-${number}`;
-  const team = createTeam({ number, name: name || `${number}. csapat`, slug });
+  const team = createTeam();
   res.json({ ok: true, team: teamRow(team, base) });
+});
+
+adminRouter.post('/teams/:id/new-code', (req, res) => {
+  const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(req.params.id);
+  if (!team) return res.status(404).json({ error: 'not_found' });
+  const code = teamCode();
+  db.prepare("UPDATE teams SET api_code = ?, updated_at = datetime('now') WHERE id = ?").run(code, team.id);
+  res.json({ ok: true, code: formatCode(code) });
 });
 
 adminRouter.patch('/teams/:id', (req, res) => {
   const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(req.params.id);
   if (!team) return res.status(404).json({ error: 'not_found' });
-  const body = req.body || {};
-  const fields = {};
-  if ('name' in body) fields.name = String(body.name || '').trim().slice(0, 60) || team.name;
-  if ('game_name' in body) fields.game_name = String(body.game_name || '').trim().slice(0, 60) || null;
-  if ('tagline' in body) fields.tagline = String(body.tagline || '').trim().slice(0, 120) || null;
-  if ('description' in body) fields.description = String(body.description || '').trim().slice(0, 600) || null;
-  if ('accent_color' in body) fields.accent_color = String(body.accent_color || '').trim() || null;
-  if ('active' in body) fields.active = body.active ? 1 : 0;
-
-  const keys = Object.keys(fields);
-  if (keys.length) {
-    const sql = `UPDATE teams SET ${keys.map((k) => `${k} = @${k}`).join(', ')}, updated_at = datetime('now') WHERE id = @id`;
-    db.prepare(sql).run({ ...fields, id: team.id });
+  if ('active' in (req.body || {})) {
+    db.prepare("UPDATE teams SET active = ?, updated_at = datetime('now') WHERE id = ?")
+      .run(req.body.active ? 1 : 0, team.id);
   }
   const fresh = db.prepare('SELECT * FROM teams WHERE id = ?').get(team.id);
   res.json({ ok: true, team: teamRow(fresh, baseUrl(req)) });
 });
 
-adminRouter.post('/teams/:id/rotate-key', (req, res) => {
-  const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(req.params.id);
-  if (!team) return res.status(404).json({ error: 'not_found' });
-  const key = apiKey();
-  db.prepare("UPDATE teams SET api_key = ?, updated_at = datetime('now') WHERE id = ?").run(key, team.id);
-  res.json({ ok: true, api_key: key });
-});
-
 adminRouter.delete('/teams/:id', (req, res) => {
   const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(req.params.id);
   if (!team) return res.status(404).json({ error: 'not_found' });
-  for (const f of [team.background_file, team.logo_file]) {
+  for (const f of [team.background_file, team.icon_file, team.icon_done_file]) {
     if (f) fs.rm(path.join(config.uploadDir, f), { force: true }, () => {});
   }
   db.prepare('DELETE FROM teams WHERE id = ?').run(team.id);
@@ -220,10 +208,7 @@ adminRouter.patch('/criteria/:id', (req, res) => {
   }
   const keys = Object.keys(fields);
   if (keys.length) {
-    db.prepare(`UPDATE criteria SET ${keys.map((k) => `${k} = @${k}`).join(', ')} WHERE id = @id`).run({
-      ...fields,
-      id: c.id,
-    });
+    db.prepare(`UPDATE criteria SET ${keys.map((k) => `${k} = @${k}`).join(', ')} WHERE id = @id`).run({ ...fields, id: c.id });
   }
   res.json({ ok: true, criterion: db.prepare('SELECT * FROM criteria WHERE id = ?').get(c.id) });
 });
@@ -235,7 +220,7 @@ adminRouter.delete('/criteria/:id', (req, res) => {
   if (used > 0 && !req.query.force) {
     return res.status(409).json({
       error: 'in_use',
-      message: `Erre a szempontra már ${used} szavazat érkezett. Kapcsold inaktívra, vagy hívd force=1 paraméterrel.`,
+      message: `Erre a szempontra már ${used} szavazat érkezett.`,
     });
   }
   db.prepare('DELETE FROM criteria WHERE id = ?').run(c.id);
@@ -249,15 +234,15 @@ adminRouter.get('/voters', (req, res) => {
   const rows = db
     .prepare(
       `SELECT v.*, (SELECT COUNT(*) FROM submissions s WHERE s.voter_id = v.id) AS voted_teams
-       FROM voters v ORDER BY v.id`
+       FROM voters v ORDER BY (v.code = ?) DESC, v.id`
     )
-    .all();
+    .all(TEST_CODE);
   res.json({
+    test_code: TEST_CODE,
     voters: rows.map((v) => ({
       id: v.id,
       code: v.code,
-      name: v.name,
-      team_id: v.team_id,
+      is_test: v.code === TEST_CODE,
       activated: Boolean(v.is_activated),
       voted_teams: v.voted_teams,
       login_url: `${base}/v/${v.token}`,
@@ -272,33 +257,16 @@ adminRouter.post('/voters', (req, res) => {
     return res.status(400).json({ error: 'invalid_count', message: '1 és 500 közötti darabszámot adj meg.' });
   }
   const created = createVoters(count);
-  const base = baseUrl(req);
-  res.json({
-    ok: true,
-    created: created.length,
-    voters: created.map((v) => ({ id: v.id, code: v.code, login_url: `${base}/v/${v.token}` })),
-  });
-});
-
-adminRouter.patch('/voters/:id', (req, res) => {
-  const v = db.prepare('SELECT * FROM voters WHERE id = ?').get(req.params.id);
-  if (!v) return res.status(404).json({ error: 'not_found' });
-  const body = req.body || {};
-  if ('name' in body) {
-    db.prepare('UPDATE voters SET name = ? WHERE id = ?').run(String(body.name || '').trim().slice(0, 40) || null, v.id);
-  }
-  if ('team_id' in body) {
-    const tid = body.team_id === null || body.team_id === '' ? null : Number(body.team_id);
-    if (tid !== null && !db.prepare('SELECT 1 FROM teams WHERE id = ?').get(tid)) {
-      return res.status(400).json({ error: 'bad_team' });
-    }
-    db.prepare('UPDATE voters SET team_id = ? WHERE id = ?').run(tid, v.id);
-  }
-  res.json({ ok: true, voter: db.prepare('SELECT * FROM voters WHERE id = ?').get(v.id) });
+  res.json({ ok: true, created: created.length });
 });
 
 adminRouter.delete('/voters/:id', (req, res) => {
-  db.prepare('DELETE FROM voters WHERE id = ?').run(req.params.id);
+  const v = db.prepare('SELECT * FROM voters WHERE id = ?').get(req.params.id);
+  if (!v) return res.status(404).json({ error: 'not_found' });
+  if (v.code === TEST_CODE) {
+    return res.status(400).json({ error: 'test_voter', message: 'A teszt szavazót nem lehet törölni.' });
+  }
+  db.prepare('DELETE FROM voters WHERE id = ?').run(v.id);
   res.json({ ok: true });
 });
 
@@ -310,22 +278,9 @@ function computeResults() {
   const weightSum = criteria.reduce((s, c) => s + (c.weight || 1), 0) || 1;
 
   const agg = db
-    .prepare(
-      `SELECT team_id, criterion_id, COUNT(*) AS n, AVG(score) AS avg, MIN(score) AS min, MAX(score) AS max
-       FROM votes GROUP BY team_id, criterion_id`
-    )
+    .prepare('SELECT team_id, criterion_id, COUNT(*) AS n, AVG(score) AS avg FROM votes GROUP BY team_id, criterion_id')
     .all();
   const map = new Map(agg.map((r) => [`${r.team_id}:${r.criterion_id}`, r]));
-
-  const dist = db
-    .prepare('SELECT team_id, criterion_id, score, COUNT(*) AS n FROM votes GROUP BY team_id, criterion_id, score')
-    .all();
-  const distMap = new Map();
-  for (const d of dist) {
-    const k = `${d.team_id}:${d.criterion_id}`;
-    if (!distMap.has(k)) distMap.set(k, {});
-    distMap.get(k)[d.score] = d.n;
-  }
 
   const rows = teams.map((t) => {
     const perCriterion = criteria.map((c) => {
@@ -336,12 +291,9 @@ function computeResults() {
         key: c.key,
         label: c.label,
         weight: c.weight,
-        min: c.min_score,
-        max: c.max_score,
         votes: a ? a.n : 0,
         avg: avg === null ? null : Number(avg.toFixed(3)),
         pct: avg === null ? null : Number((((avg - c.min_score) / span) * 100).toFixed(2)),
-        distribution: distMap.get(`${t.id}:${c.id}`) || {},
       };
     });
 
@@ -351,12 +303,9 @@ function computeResults() {
 
     return {
       team_id: t.id,
-      slug: t.slug,
       number: t.number,
-      name: t.name,
-      game_name: t.game_name,
+      label: teamLabel(t),
       accent_color: t.accent_color || '#7c5cff',
-      background_url: t.background_file ? `/uploads/${t.background_file}` : null,
       voters: db.prepare('SELECT COUNT(*) AS c FROM submissions WHERE team_id = ?').get(t.id).c,
       criteria: perCriterion,
       score_sum: Number(scored.reduce((s, p) => s + p.avg, 0).toFixed(3)),
@@ -366,30 +315,16 @@ function computeResults() {
   });
 
   const ranked = [...rows].sort((a, b) => (b.total_pct ?? -1) - (a.total_pct ?? -1));
-  ranked.forEach((r, i) => {
-    r.rank = r.total_pct === null ? null : i + 1;
-  });
+  ranked.forEach((r, i) => { r.rank = r.total_pct === null ? null : i + 1; });
 
   const categoryWinners = criteria.map((c) => {
     const best = [...rows]
       .filter((r) => r.criteria.find((p) => p.key === c.key)?.avg !== null)
-      .sort((a, b) => {
-        const av = a.criteria.find((p) => p.key === c.key).avg;
-        const bv = b.criteria.find((p) => p.key === c.key).avg;
-        return bv - av;
-      })[0];
+      .sort((a, b) => b.criteria.find((p) => p.key === c.key).avg - a.criteria.find((p) => p.key === c.key).avg)[0];
     return {
       key: c.key,
       label: c.label,
-      winner: best
-        ? {
-            slug: best.slug,
-            number: best.number,
-            name: best.name,
-            game_name: best.game_name,
-            avg: best.criteria.find((p) => p.key === c.key).avg,
-          }
-        : null,
+      winner: best ? { number: best.number, label: best.label, avg: best.criteria.find((p) => p.key === c.key).avg } : null,
     };
   });
 
@@ -397,9 +332,8 @@ function computeResults() {
 }
 
 adminRouter.get('/results', (_req, res) => {
-  const r = computeResults();
   res.json({
-    ...r,
+    ...computeResults(),
     stats: {
       voters_total: db.prepare('SELECT COUNT(*) AS c FROM voters').get().c,
       voters_voted: db.prepare('SELECT COUNT(DISTINCT voter_id) AS c FROM submissions').get().c,
@@ -410,103 +344,96 @@ adminRouter.get('/results', (_req, res) => {
   });
 });
 
-adminRouter.get('/results/matrix', (_req, res) => {
-  const rows = db
-    .prepare(
-      `SELECT v.id AS voter_id, v.code, v.name, t.slug, t.number, t.name AS team_name,
-              c.key AS criterion, vo.score, vo.updated_at
-       FROM votes vo
-       JOIN voters v ON v.id = vo.voter_id
-       JOIN teams t ON t.id = vo.team_id
-       JOIN criteria c ON c.id = vo.criterion_id
-       ORDER BY v.id, t.number, c.position`
-    )
-    .all();
+adminRouter.get('/results/comments', (_req, res) => {
   const comments = db
     .prepare(
-      `SELECT v.code, v.name, t.slug, t.number, t.name AS team_name, s.comment, s.updated_at
-       FROM submissions s JOIN voters v ON v.id = s.voter_id JOIN teams t ON t.id = s.team_id
+      `SELECT t.number, t.name, t.game_name, s.comment, s.updated_at
+       FROM submissions s JOIN teams t ON t.id = s.team_id
        WHERE s.comment IS NOT NULL AND TRIM(s.comment) <> ''
-       ORDER BY s.updated_at DESC`
+       ORDER BY s.updated_at DESC LIMIT 300`
     )
-    .all();
-  res.json({ rows, comments });
+    .all()
+    .map((c) => ({ number: c.number, label: teamLabel(c), comment: c.comment, updated_at: c.updated_at }));
+  res.json({ comments });
 });
 
-adminRouter.get('/export/votes.csv', (_req, res) => {
-  const rows = db
-    .prepare(
-      `SELECT v.code AS szavazo_kod, COALESCE(v.name, '') AS szavazo_nev,
-              t.number AS csapat_szam, t.name AS csapat, COALESCE(t.game_name, '') AS jatek,
-              c.key AS szempont_kulcs, c.label AS szempont, vo.score AS pont, vo.updated_at AS idopont
-       FROM votes vo
-       JOIN voters v ON v.id = vo.voter_id
-       JOIN teams t ON t.id = vo.team_id
-       JOIN criteria c ON c.id = vo.criterion_id
-       ORDER BY t.number, v.code, c.position`
-    )
-    .all();
-  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const header = Object.keys(
-    rows[0] || {
-      szavazo_kod: '', szavazo_nev: '', csapat_szam: '', csapat: '', jatek: '',
-      szempont_kulcs: '', szempont: '', pont: '', idopont: '',
-    }
-  );
-  const csv = [header.join(';'), ...rows.map((r) => header.map((h) => esc(r[h])).join(';'))].join('\r\n');
-  res.type('text/csv; charset=utf-8');
-  res.set('Content-Disposition', 'attachment; filename="nitrogames-szavazatok.csv"');
-  res.send('﻿' + csv);
-});
+/* ---------- nullazas ---------- */
 
-adminRouter.post('/reset-votes', (req, res) => {
-  if (String((req.body && req.body.confirm) || '') !== 'TOROL') {
-    return res.status(400).json({
-      error: 'confirm_required',
-      message: 'A törléshez küldd a { "confirm": "TOROL" } mezőt.',
-    });
+adminRouter.post('/reset', (req, res) => {
+  const body = req.body || {};
+  if (String(body.confirm || '') !== 'TOROL') {
+    return res.status(400).json({ error: 'confirm_required', message: 'A törléshez küldd a { "confirm": "TOROL" } mezőt.' });
   }
-  const before = db.prepare('SELECT COUNT(*) AS c FROM votes').get().c;
+  const scope = body.scope === 'all' ? 'all' : 'votes';
+  const before = {
+    votes: db.prepare('SELECT COUNT(*) AS c FROM votes').get().c,
+    teams: db.prepare('SELECT COUNT(*) AS c FROM teams').get().c,
+    voters: db.prepare('SELECT COUNT(*) AS c FROM voters').get().c,
+  };
+
   db.transaction(() => {
     db.prepare('DELETE FROM votes').run();
     db.prepare('DELETE FROM submissions').run();
+    if (scope === 'all') {
+      for (const t of db.prepare('SELECT background_file, icon_file, icon_done_file FROM teams').all()) {
+        for (const f of [t.background_file, t.icon_file, t.icon_done_file]) {
+          if (f) fs.rm(path.join(config.uploadDir, f), { force: true }, () => {});
+        }
+      }
+      db.prepare('DELETE FROM teams').run();
+      db.prepare('DELETE FROM voters').run();
+      db.prepare("DELETE FROM sqlite_sequence WHERE name IN ('teams', 'voters')").run();
+    }
   })();
-  res.json({ ok: true, deleted: before });
+
+  if (scope === 'all') ensureTestVoter();
+
+  res.json({
+    ok: true,
+    scope,
+    deleted: scope === 'all' ? before : { votes: before.votes },
+    message: scope === 'all'
+      ? 'Minden törölve: szavazatok, csapatok, szavazók. A teszt kód megmaradt.'
+      : `${before.votes} szavazat törölve. A csapatok és szavazók megmaradtak.`,
+  });
 });
 
 /* ---------- nyomtathato PDF-ek ---------- */
 
+function sendPdf(res, req, buffer, filename) {
+  const inline = req.query.nezet === 'inline';
+  res.type('application/pdf');
+  res.set('Content-Disposition', `${inline ? 'inline' : 'attachment'}; filename="${filename}"`);
+  res.send(buffer);
+}
+
 adminRouter.get('/print/voters.pdf', async (req, res, next) => {
   try {
     const base = baseUrl(req);
-    const onlyNew = req.query.only_new === '1';
     const rows = db
-      .prepare(`SELECT token, code, is_activated FROM voters ${onlyNew ? 'WHERE is_activated = 0' : ''} ORDER BY id`)
+      .prepare(`SELECT token, code FROM voters ${req.query.only_new === '1' ? 'WHERE is_activated = 0' : ''} ORDER BY id`)
       .all();
-    const voters = rows.map((v) => ({ code: v.code, login_url: `${base}/v/${v.token}` }));
-    const pdf = await votersPdf(voters, {
-      cols: Number(req.query.cols) || 4,
-      host: new URL(base).host,
-    });
-    res.type('application/pdf');
-    res.set('Content-Disposition', 'attachment; filename="nitrogames-szavazoi-belepok.pdf"');
-    res.send(pdf);
+    const pdf = await votersPdf(
+      rows.map((v) => ({ code: v.code, login_url: `${base}/v/${v.token}` })),
+      { cols: Number(req.query.cols) || 4, host: new URL(base).host }
+    );
+    sendPdf(res, req, pdf, 'nitrogames-szavazoi-belepok.pdf');
   } catch (err) {
     next(err);
   }
 });
 
+/** A csapatok beleptetolapja: kod, szervercim es egy tovabbkuldheto QR. */
 adminRouter.get('/print/teams.pdf', async (req, res, next) => {
   try {
     const base = baseUrl(req);
-    const teams = db
-      .prepare('SELECT number, name, game_name, slug FROM teams WHERE active = 1 ORDER BY number')
-      .all()
-      .map((t) => ({ ...t, vote_url: `${base}/t/${t.slug}` }));
-    const pdf = await teamsPdf(teams);
-    res.type('application/pdf');
-    res.set('Content-Disposition', 'attachment; filename="nitrogames-csapat-tablak.pdf"');
-    res.send(pdf);
+    const teams = db.prepare('SELECT * FROM teams WHERE active = 1 ORDER BY number').all().map((t) => ({
+      number: t.number,
+      code: formatCode(t.api_code),
+      console_url: `${base}/csapat?kod=${formatCode(t.api_code)}`,
+    }));
+    const pdf = await teamSheetPdf(teams, { base });
+    sendPdf(res, req, pdf, 'nitrogames-csapat-belepok.pdf');
   } catch (err) {
     next(err);
   }

@@ -59,15 +59,16 @@ const view = (name) => (_req, res) => res.sendFile(path.join(VIEWS, name));
 /* ---------- szavazoi oldalak ---------- */
 
 app.get('/', view('index.html'));
-app.get('/join', view('join.html'));
-app.get('/me', view('me.html'));
-app.get('/t/:slug', view('vote.html'));
-app.get('/team', view('team.html'));
+app.get('/belepes', view('belepes.html'));
+app.get('/join', (_req, res) => res.redirect('/belepes'));
+app.get('/t/:publicId', view('vote.html'));
+app.get('/csapat', view('csapat.html'));
+app.get('/team', (req, res) => res.redirect('/csapat' + (req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '')));
 
 /** Szemelyes belepteto link (a papir QR ide mutat). */
 app.get('/v/:token', (req, res) => {
   const voter = db.prepare('SELECT * FROM voters WHERE token = ?').get(req.params.token);
-  if (!voter) return res.redirect('/join?hiba=ismeretlen');
+  if (!voter) return res.redirect('/belepes?hiba=ismeretlen');
   res.cookie(VOTER_COOKIE, voter.token, voterCookieOpts());
   db.prepare("UPDATE voters SET is_activated = 1, last_seen_at = datetime('now') WHERE id = ?").run(voter.id);
 
@@ -86,13 +87,12 @@ app.post('/api/session/logout', (_req, res) => {
 app.get('/admin/login', view('admin-login.html'));
 app.get('/admin', requireAdminPage, view('admin.html'));
 app.get('/admin/eredmeny', requireAdminPage, view('admin-results.html'));
-app.get('/admin/nyomtatas/szavazok', requireAdminPage, view('print-voters.html'));
-app.get('/admin/nyomtatas/csapatok', requireAdminPage, view('print-teams.html'));
 
 /* ---------- API ---------- */
 
 app.use('/api/admin', adminRouter);
-app.use('/api/team', teamRouter);
+app.use('/api/csapat', teamRouter);
+app.use('/api/team', teamRouter); // regi nev, hogy a mar kiadott peldak is menjenek
 app.use('/api', publicRouter);
 
 app.get('/healthz', (_req, res) => res.json({ ok: true, uptime: process.uptime() }));

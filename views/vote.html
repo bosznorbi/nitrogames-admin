@@ -12,12 +12,16 @@
 <body>
 
 <header class="topbar">
-  <a class="brand" href="/"><span class="dot"></span><span id="eventName">Nitrogames</span></a>
-  <a class="who" href="/me" id="who" hidden></a>
+  <a class="back" href="/" aria-label="Vissza a főoldalra">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18l-6-6 6-6"/>
+    </svg>
+  </a>
+  <span class="brand" style="margin-right:auto;margin-left:10px"><span id="eventName">Nitrogames</span></span>
 </header>
 
 <main class="wrap" id="main">
-  <div class="skeleton" style="height:210px"></div>
+  <div class="skeleton" style="height:200px"></div>
   <div class="skeleton"></div>
   <div class="skeleton"></div>
 </main>
@@ -25,17 +29,17 @@
 <script type="module">
 import { api, el, toast } from '/static/js/app.js';
 
-const slug = decodeURIComponent(location.pathname.split('/')[2] || '');
+const publicId = decodeURIComponent(location.pathname.split('/')[2] || '');
 const main = document.getElementById('main');
 const scores = {};
 let data;
 
 function heroNode(team) {
-  const sub = team.tagline || (team.game_name ? team.name : 'Ez a csapat még nem töltötte fel a játékát');
+  const sub = team.tagline || (team.game_name ? team.name || '' : 'Ez a csapat még nem töltötte fel a játékát');
   return el('div', { class: team.background_url ? 'stage' : 'hero plain' },
     el('span', { class: 'chip' }, `${team.number}. csapat`),
-    el('h1', {}, team.game_name || team.name),
-    el('p', { class: 'hero-sub' }, sub)
+    el('h1', {}, team.label),
+    sub ? el('p', { class: 'hero-sub' }, sub) : null
   );
 }
 
@@ -53,12 +57,7 @@ function inkFor(hex) {
 
 function scaleNode(c) {
   const steps = c.max - c.min + 1;
-  const wrap = el('div', {
-    class: `scale ${steps > 7 ? 'wide' : ''}`,
-    role: 'radiogroup',
-    'aria-label': c.label,
-  });
-
+  const wrap = el('div', { class: `scale ${steps > 7 ? 'wide' : ''}`, role: 'radiogroup', 'aria-label': c.label });
   for (let v = c.min; v <= c.max; v++) {
     wrap.append(
       el('button', {
@@ -67,7 +66,7 @@ function scaleNode(c) {
         role: 'radio',
         'aria-checked': 'false',
         'aria-label': `${v} pont`,
-        dataset: { v: String(v), key: c.key },
+        dataset: { v: String(v) },
         onclick: () => setScore(c, v),
       }, String(v))
     );
@@ -92,12 +91,10 @@ function refreshProgress() {
   const total = data.criteria.length;
   const done = data.criteria.filter((c) => scores[c.key] !== undefined).length;
   const bar = document.getElementById('bar');
-  const text = document.getElementById('progressText');
-  const btn = document.getElementById('submit');
   if (!bar) return;
   bar.style.width = `${Math.round((done / total) * 100)}%`;
-  text.textContent = `${done} / ${total} szempont kitöltve`;
-  btn.disabled = done < total;
+  document.getElementById('progressText').textContent = `${done} / ${total} szempont kitöltve`;
+  document.getElementById('submit').disabled = done < total;
 }
 
 function render() {
@@ -106,7 +103,7 @@ function render() {
   root.setProperty('--team', team.accent_color);
   root.setProperty('--accent', team.accent_color);
   root.setProperty('--accent-ink', inkFor(team.accent_color));
-  document.title = `${team.game_name || team.name} - szavazás`;
+  document.title = `${team.label} - szavazás`;
 
   if (team.background_url) {
     root.setProperty('--team-bg', `url("${team.background_url}")`);
@@ -125,23 +122,16 @@ function render() {
         el('h2', { style: { marginTop: '0' } }, 'Előbb azonosítsd magad'),
         el('p', { class: 'small muted', style: { marginTop: '0' } },
           'Olvasd be a saját papírkádon lévő QR-kódot, vagy írd be a rajta lévő kódot. Utána visszakerülsz ide.'),
-        el('a', { class: 'btn block', href: `/join?next=${encodeURIComponent(location.pathname)}` }, 'Azonosítás')
+        el('a', { class: 'btn block', href: `/belepes?next=${encodeURIComponent(location.pathname)}` }, 'Azonosítás')
       )
     );
-    return;
-  }
-
-  if (data.own_team) {
-    main.append(el('div', { class: 'note warn', style: { marginTop: '18px' } },
-      'Ez a saját csapatod, erre nem szavazhatsz.'));
-    main.append(el('a', { class: 'btn ghost block', href: '/', style: { marginTop: '12px' } }, 'Vissza a csapatokhoz'));
     return;
   }
 
   if (!data.voting_open) {
     main.append(el('div', { class: 'note warn', style: { marginTop: '18px' } },
       'A szavazás jelenleg zárva. Nézz vissza, amikor a szervezők megnyitják.'));
-    main.append(el('a', { class: 'btn ghost block', href: '/', style: { marginTop: '12px' } }, 'Vissza a csapatokhoz'));
+    main.append(el('a', { class: 'btn ghost block', href: '/', style: { marginTop: '12px' } }, 'Vissza a főoldalra'));
     return;
   }
 
@@ -169,16 +159,17 @@ function render() {
     );
   }
 
-  const sticky = el('div', { class: 'sticky' },
-    el('div', { class: 'progress-line' },
-      el('span', { id: 'progressText' }, ''),
-      el('span', { class: 'muted' }, data.already_voted ? 'Módosítható' : '')
-    ),
-    el('div', { class: 'bar' }, el('i', { id: 'bar' })),
-    el('button', { class: 'btn block', id: 'submit', onclick: submit },
-      data.already_voted ? 'Szavazat módosítása' : 'Szavazat beküldése')
+  main.append(
+    el('div', { class: 'sticky' },
+      el('div', { class: 'progress-line' },
+        el('span', { id: 'progressText' }, ''),
+        el('span', { class: 'muted' }, data.already_voted ? 'Módosítható' : '')
+      ),
+      el('div', { class: 'bar' }, el('i', { id: 'bar' })),
+      el('button', { class: 'btn block', id: 'submit', onclick: submit },
+        data.already_voted ? 'Szavazat módosítása' : 'Szavazat elküldése')
+    )
   );
-  main.append(sticky);
 
   for (const c of data.criteria) {
     if (data.my_scores[c.key] !== undefined) setScore(c, data.my_scores[c.key]);
@@ -193,49 +184,29 @@ async function submit() {
   btn.textContent = 'Küldés…';
   const commentEl = document.getElementById('comment');
   try {
-    await api(`/api/teams/${encodeURIComponent(slug)}/vote`, {
+    await api(`/api/teams/${encodeURIComponent(publicId)}/vote`, {
       method: 'POST',
       body: { scores, comment: commentEl ? commentEl.value : undefined },
     });
-    success();
+    // A fooldal kiemeli azt a csempet, amire most szavaztunk.
+    location.replace(`/?szavaztam=${encodeURIComponent(publicId)}`);
   } catch (err) {
     toast(err.message, true);
     btn.disabled = false;
-    btn.textContent = 'Szavazat beküldése';
+    btn.textContent = 'Szavazat elküldése';
   }
-}
-
-function success() {
-  const team = data.team;
-  main.replaceChildren(
-    heroNode(team),
-    el('div', { class: 'card center', style: { marginTop: '18px' } },
-      el('div', { class: 'big-check' }, '✓'),
-      el('h2', { style: { margin: '0 0 6px' } }, 'Köszönjük, mentettük!'),
-      el('p', { class: 'small muted', style: { marginTop: '0' } },
-        'Amíg a szavazás nyitva van, bármikor visszajöhetsz és módosíthatod.')
-    ),
-    el('a', { class: 'btn block', href: '/', style: { marginTop: '12px' } }, 'Következő csapat'),
-    el('a', { class: 'btn quiet block', href: '/me', style: { marginTop: '6px' } }, 'Saját szavazataim')
-  );
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 (async () => {
   try {
     const cfg = await api('/api/config');
     document.getElementById('eventName').textContent = cfg.event_name;
-    if (cfg.voter) {
-      const who = document.getElementById('who');
-      who.hidden = false;
-      who.textContent = cfg.voter.name || `Kód: ${cfg.voter.code}`;
-    }
-    data = await api(`/api/teams/${encodeURIComponent(slug)}`);
+    data = await api(`/api/teams/${encodeURIComponent(publicId)}`);
     render();
   } catch (err) {
     main.replaceChildren(
-      el('div', { class: 'note err' }, err.status === 404 ? 'Nincs ilyen csapat.' : err.message),
-      el('a', { class: 'btn ghost block', href: '/', style: { marginTop: '12px' } }, 'Vissza a csapatokhoz')
+      el('div', { class: 'note err' }, err.status === 404 ? 'Nincs ilyen csapat. Olvasd be újra a QR-kódot.' : err.message),
+      el('a', { class: 'btn ghost block', href: '/', style: { marginTop: '12px' } }, 'Vissza a főoldalra')
     );
   }
 })();

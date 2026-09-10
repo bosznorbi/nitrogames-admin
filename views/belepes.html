@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0b10">
+<meta name="robots" content="noindex">
+<title>Belépés a szavazáshoz</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <span class="brand"><span class="dot"></span><span id="eventName">Nitrogames</span></span>
+</header>
+
+<main class="wrap">
+  <h1>Olvasd be a saját QR-kódodat</h1>
+  <p class="lead">
+    A papírkádon lévő kód beléptet, és a telefonod onnantól megjegyez. Elég egyszer.
+  </p>
+
+  <div class="note err" id="err" hidden></div>
+
+  <div class="card">
+    <h2 style="margin-top:0">Nem megy a beolvasás?</h2>
+    <p class="small muted" style="margin-top:0">
+      Írd be a papírkádon lévő betűkódot.
+    </p>
+    <form id="codeForm" autocomplete="off">
+      <label class="field">
+        <span>Kód a papírról</span>
+        <input type="text" class="code-input" id="code" name="code" maxlength="5" inputmode="text"
+               autocapitalize="characters" autocorrect="off" spellcheck="false"
+               placeholder="ABCD" required>
+      </label>
+      <button class="btn block" type="submit" id="codeBtn">Belépés</button>
+    </form>
+  </div>
+
+  <div class="spacer"></div>
+  <p class="small muted center">
+    Ha elveszett a papírod, szólj a szervezőknek, és kapsz újat.
+  </p>
+</main>
+
+<script type="module">
+import { api, toast } from '/static/js/app.js';
+
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const next = params.get('next');
+const target = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+
+if (params.get('hiba') === 'ismeretlen') {
+  $('err').hidden = false;
+  $('err').textContent = 'Ez a belépő kód nem érvényes. Kérj újat a szervezőktől, vagy írd be a kódot kézzel.';
+}
+
+api('/api/config')
+  .then((cfg) => {
+    $('eventName').textContent = cfg.event_name;
+    if (cfg.authenticated) location.replace(target);
+  })
+  .catch(() => {});
+
+$('code').addEventListener('input', (e) => {
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+});
+
+$('codeForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('codeBtn');
+  btn.disabled = true;
+  try {
+    await api('/api/session/code', { method: 'POST', body: { code: $('code').value } });
+    location.replace(target);
+  } catch (err) {
+    toast(err.message, true);
+    btn.disabled = false;
+    $('code').select();
+  }
+});
+</script>
+</body>
+</html>

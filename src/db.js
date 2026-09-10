@@ -1,6 +1,39 @@
 import Database from 'better-sqlite3';
+import fs from 'node:fs';
 import { config } from './config.js';
-import { apiKey, humanCode, randomToken } from './lib/ids.js';
+import { publicId, teamCode, voterCode, randomToken } from './lib/ids.js';
+
+/**
+ * A csapatok azonositasa atallt olvashato slugrol kitalalhatatlan public_id-ra,
+ * a hosszu API kulcs pedig papirrol begepelheto kodra. A regi sema oszlopai
+ * NOT NULL-ok voltak, azokba az uj kod nem tud beszurni. Ilyenkor a regi
+ * fajlt felretesszuk (nem toroljuk), es tiszta adatbazissal indulunk.
+ */
+function retireLegacyDatabase(file) {
+  if (!fs.existsSync(file)) return;
+  let legacy = false;
+  const probe = new Database(file, { readonly: true });
+  try {
+    const cols = probe.prepare('PRAGMA table_info(teams)').all().map((c) => c.name);
+    legacy = cols.length > 0 && (cols.includes('slug') || cols.includes('api_key'));
+  } catch {
+    legacy = false;
+  } finally {
+    probe.close();
+  }
+  if (!legacy) return;
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const target = file.replace(/\.sqlite$/, '') + `-regi-${stamp}.sqlite`;
+  fs.renameSync(file, target);
+  for (const suffix of ['-wal', '-shm']) {
+    if (fs.existsSync(file + suffix)) fs.rmSync(file + suffix, { force: true });
+  }
+  console.log(`  Régi sémájú adatbázist találtam, félretettem ide: ${target}`);
+  console.log('  Tiszta adatbázissal indulok. A csapatokat és szavazókat generáld újra az adminban.');
+}
+
+retireLegacyDatabase(config.dbFile);
 
 export const db = new Database(config.dbFile);
 db.pragma('journal_mode = WAL');
@@ -14,16 +47,18 @@ CREATE TABLE IF NOT EXISTS settings (
 
 CREATE TABLE IF NOT EXISTS teams (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
-  slug            TEXT NOT NULL UNIQUE,
+  public_id       TEXT NOT NULL UNIQUE,
+  api_code        TEXT NOT NULL UNIQUE,
   number          INTEGER NOT NULL,
-  name            TEXT NOT NULL,
+  name            TEXT,
   game_name       TEXT,
   tagline         TEXT,
   description     TEXT,
   accent_color    TEXT,
   background_file TEXT,
-  logo_file       TEXT,
-  api_key         TEXT NOT NULL UNIQUE,
+  icon_file       TEXT,
+  icon_done_file  TEXT,
+  qr_fetched_at   TEXT,
   active          INTEGER NOT NULL DEFAULT 1,
   created_at      TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
@@ -33,8 +68,6 @@ CREATE TABLE IF NOT EXISTS voters (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   token        TEXT NOT NULL UNIQUE,
   code         TEXT NOT NULL UNIQUE,
-  name         TEXT,
-  team_id      INTEGER REFERENCES teams(id) ON DELETE SET NULL,
   is_activated INTEGER NOT NULL DEFAULT 0,
   created_at   TEXT NOT NULL DEFAULT (datetime('now')),
   last_seen_at TEXT
@@ -78,18 +111,42 @@ CREATE INDEX IF NOT EXISTS idx_votes_voter ON votes(voter_id);
 CREATE INDEX IF NOT EXISTS idx_submissions_team ON submissions(team_id);
 `);
 
+/* ---------- migracio ---------- */
+
+/** Hianyzo oszlopokat pototl, hogy a korabbi adatbazis is tovabb eljen. */
+function addColumn(table, column, definition) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+  if (!cols.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
+for (const [col, def] of [
+  ['public_id', 'TEXT'],
+  ['api_code', 'TEXT'],
+  ['icon_file', 'TEXT'],
+  ['icon_done_file', 'TEXT'],
+  ['qr_fetched_at', 'TEXT'],
+]) {
+  addColumn('teams', col, def);
+}
+
+// A regi peldanyokban meg lehet public_id vagy api_code nelkuli csapat.
+for (const t of db.prepare('SELECT id, public_id, api_code FROM teams').all()) {
+  if (!t.public_id) db.prepare('UPDATE teams SET public_id = ? WHERE id = ?').run(publicId(), t.id);
+  if (!t.api_code) db.prepare('UPDATE teams SET api_code = ? WHERE id = ?').run(teamCode(), t.id);
+}
+
 /* ---------- settings ---------- */
 
 const DEFAULT_SETTINGS = {
   voting_open: '0',
-  results_public: '0',
-  allow_self_vote: '0',
   require_all_criteria: '1',
   allow_comments: '1',
-  allow_self_register: '1',
   event_name: config.eventName,
-  intro_text: 'Pontozd a csapatok játékait! Olvasd be egy csapat QR-kódját, és értékeld.',
+  ready_text: 'Minden készen áll!',
 };
+
+// A nevvel valo belepes es a sajat csapat tiltasa kikerult: a kodok anonimak.
+db.prepare("DELETE FROM settings WHERE key IN ('allow_self_register', 'allow_self_vote', 'results_public', 'intro_text')").run();
 
 export function getSetting(key) {
   const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
@@ -112,7 +169,7 @@ export function allSettings() {
   return out;
 }
 
-/* ---------- seed ---------- */
+/* ---------- szempontok ---------- */
 
 const DEFAULT_CRITERIA = [
   { key: 'jatekelmeny', label: 'Játékélmény', description: 'Mennyire szórakoztató ténylegesen játszani vele?', position: 1 },
@@ -129,44 +186,56 @@ export function seedCriteriaIfEmpty() {
     `INSERT INTO criteria (key, label, description, min_score, max_score, weight, position, active)
      VALUES (@key, @label, @description, 1, 5, 1, @position, 1)`
   );
-  const tx = db.transaction((rows) => rows.forEach((r) => ins.run(r)));
-  tx(DEFAULT_CRITERIA);
+  db.transaction((rows) => rows.forEach((r) => ins.run(r)))(DEFAULT_CRITERIA);
   return DEFAULT_CRITERIA.length;
 }
 
+/* ---------- csapatok ---------- */
+
 const ACCENTS = ['#7c5cff', '#00d4ff', '#ff5c8a', '#ffb020', '#2ee6a8', '#ff7847', '#5b8cff', '#c46bff', '#00c2a8', '#ff4d6d', '#8ee34a', '#ff9ec4'];
 
-export function createTeam({ number, name, slug }) {
+export function createTeam({ number } = {}) {
   const n = number ?? (db.prepare('SELECT COALESCE(MAX(number), 0) AS m FROM teams').get().m + 1);
   return db
     .prepare(
-      `INSERT INTO teams (slug, number, name, accent_color, api_key)
-       VALUES (?, ?, ?, ?, ?) RETURNING *`
+      `INSERT INTO teams (public_id, api_code, number, accent_color)
+       VALUES (?, ?, ?, ?) RETURNING *`
     )
-    .get(slug || `csapat-${n}`, n, name || `${n}. csapat`, ACCENTS[(n - 1) % ACCENTS.length], apiKey());
+    .get(publicId(), teamCode(), n, ACCENTS[(n - 1) % ACCENTS.length]);
 }
 
-export function ensureTeams(count) {
-  const existing = db.prepare('SELECT COUNT(*) AS c FROM teams').get().c;
-  const created = [];
-  for (let i = existing + 1; i <= count; i++) created.push(createTeam({ number: i }));
-  return created;
+/** A csapat kifele hasznalt neve. A csapat sajat nevet ad magának, ez csak tartalek. */
+export function teamLabel(team) {
+  return team.game_name || team.name || `${team.number}. csapat`;
 }
+
+/* ---------- szavazok ---------- */
+
+/** Tesztelesre beegetett kod, mintha ki lenne nyomtatva. */
+export const TEST_CODE = 'TESZT';
 
 export function createVoters(count) {
-  const codes = new Set(db.prepare('SELECT code FROM voters').all().map((r) => r.code));
+  const taken = new Set(db.prepare('SELECT code FROM voters').all().map((r) => r.code));
   const ins = db.prepare('INSERT INTO voters (token, code) VALUES (?, ?) RETURNING *');
   const out = [];
-  const tx = db.transaction(() => {
+  db.transaction(() => {
     for (let i = 0; i < count; i++) {
-      let code = humanCode(5);
-      while (codes.has(code)) code = humanCode(5);
-      codes.add(code);
+      let code = voterCode();
+      while (taken.has(code)) code = voterCode();
+      taken.add(code);
       out.push(ins.get(randomToken(16), code));
     }
-  });
-  tx();
+  })();
   return out;
 }
 
+export function ensureTestVoter() {
+  const existing = db.prepare('SELECT * FROM voters WHERE code = ?').get(TEST_CODE);
+  if (existing) return existing;
+  return db
+    .prepare('INSERT INTO voters (token, code) VALUES (?, ?) RETURNING *')
+    .get(randomToken(16), TEST_CODE);
+}
+
 seedCriteriaIfEmpty();
+ensureTestVoter();

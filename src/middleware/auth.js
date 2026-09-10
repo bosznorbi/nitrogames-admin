@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { config } from '../config.js';
 import { db } from '../db.js';
-import { safeEqual } from '../lib/ids.js';
+import { normalizeCode, safeEqual } from '../lib/ids.js';
 
 export const VOTER_COOKIE = 'ng_voter';
 export const ADMIN_COOKIE = 'ng_admin';
@@ -77,19 +77,31 @@ export function requireAdminPage(req, res, next) {
   return res.redirect(`/admin/login?next=${encodeURIComponent(req.originalUrl)}`);
 }
 
-/** Csapat API kulcs: `Authorization: Bearer ng_...` vagy `X-API-Key: ng_...`. */
-export function requireTeamKey(req, res, next) {
+/**
+ * Csapatkod. A papiron kapott 8 karakteres kod, barmelyik helyen:
+ *   Authorization: Bearer XXXX-XXXX
+ *   X-Csapat-Kod: XXXX-XXXX
+ *   ?kod=XXXX-XXXX
+ * A kotojel es a kisbetu nem szamit.
+ */
+export function requireTeamCode(req, res, next) {
   const header = req.get('authorization') || '';
   const bearer = header.toLowerCase().startsWith('bearer ') ? header.slice(7).trim() : null;
-  const key = bearer || req.get('x-api-key') || req.query.api_key;
-  if (!key) {
+  const raw = bearer || req.get('x-csapat-kod') || req.get('x-api-key') || req.query.kod || req.query.code;
+  if (!raw) {
     return res.status(401).json({
-      error: 'missing_api_key',
-      message: 'Add meg az API kulcsot: Authorization: Bearer ng_... vagy X-API-Key: ng_...',
+      error: 'hianyzo_kod',
+      message: 'Add meg a csapatkódot: Authorization: Bearer XXXX-XXXX fejlécben, vagy ?kod=XXXX-XXXX paraméterben.',
     });
   }
-  const team = db.prepare('SELECT * FROM teams WHERE api_key = ?').get(String(key));
-  if (!team) return res.status(403).json({ error: 'invalid_api_key', message: 'Ismeretlen API kulcs.' });
+  const code = normalizeCode(raw);
+  const team = code ? db.prepare('SELECT * FROM teams WHERE api_code = ?').get(code) : null;
+  if (!team) {
+    return res.status(403).json({
+      error: 'ismeretlen_kod',
+      message: 'Ismeretlen csapatkód. A papírotokon szereplő 8 karakteres kódot add meg.',
+    });
+  }
   req.team = team;
   next();
 }

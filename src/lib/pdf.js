@@ -2,8 +2,8 @@
  * Nyomtathato ivek PDF-ben, szerveroldalon.
  *
  * Sajat betutipust agyazunk be: a PDF beepitett fontjai WinAnsi kodolasuak,
- * abbol hianyzik az o" es u" (U+0151, U+0171), tehat a magyar csapatnevek
- * elromlananak. A DejaVu Sans lefedi oket.
+ * abbol hianyzik az o" es u" (U+0151, U+0171), tehat a magyar szoveg
+ * elromlana. A DejaVu Sans lefedi oket.
  */
 import PDFDocument from 'pdfkit';
 import path from 'node:path';
@@ -22,7 +22,7 @@ const PAGE = { width: mm(210), height: mm(297) };
 const USABLE = { width: PAGE.width - 2 * MARGIN, height: PAGE.height - 2 * MARGIN };
 
 const INK = '#111111';
-const MUTED = '#6b7280';
+const MUTED = '#5b6377';
 const CUT = '#b9c0cf';
 
 function newDoc(title) {
@@ -47,15 +47,15 @@ function cutBox(doc, x, y, w, h) {
 }
 
 /**
- * Szavazoi belepok: suru vagoracs, cetlinkent QR + 5 karakteres kod.
+ * Szavazoi belepok. Egy cetlin csak a QR es a betukod van, semmi mas.
  * @param {Array<{code: string, login_url: string}>} voters
  */
-export async function votersPdf(voters, { cols = 4, host = '' } = {}) {
+export async function votersPdf(voters, { cols = 4 } = {}) {
   const columns = Math.min(Math.max(Number(cols) || 4, 2), 8);
   const colW = USABLE.width / columns;
   const padX = mm(1.5);
   const qrSize = Math.min(colW - 2 * padX, mm(32));
-  const rowH = qrSize + mm(13.5);
+  const rowH = qrSize + mm(11);
   const rows = Math.max(1, Math.floor(USABLE.height / rowH));
   const perPage = columns * rows;
 
@@ -66,29 +66,17 @@ export async function votersPdf(voters, { cols = 4, host = '' } = {}) {
     const slot = i % perPage;
     if (slot === 0) doc.addPage();
 
-    const col = slot % columns;
-    const row = Math.floor(slot / columns);
-    const x = MARGIN + col * colW;
-    const y = MARGIN + row * rowH;
+    const x = MARGIN + (slot % columns) * colW;
+    const y = MARGIN + Math.floor(slot / columns) * rowH;
 
     cutBox(doc, x, y, colW, rowH);
     doc.image(qrs[i], x + (colW - qrSize) / 2, y + mm(2.5), { width: qrSize });
-
-    doc.font('bold').fontSize(13).fillColor(INK).text(
+    doc.font('bold').fontSize(15).fillColor(INK).text(
       voter.code.split('').join(' '),
       x + padX,
       y + mm(2.5) + qrSize + mm(1.5),
       { width: colW - 2 * padX, align: 'center', lineBreak: false }
     );
-
-    if (host) {
-      doc.font('sans').fontSize(6.5).fillColor(MUTED).text(
-        host,
-        x + padX,
-        y + mm(2.5) + qrSize + mm(7),
-        { width: colW - 2 * padX, align: 'center', lineBreak: false }
-      );
-    }
   });
 
   if (!voters.length) {
@@ -100,56 +88,62 @@ export async function votersPdf(voters, { cols = 4, host = '' } = {}) {
 }
 
 /**
- * Csapattablak: A5 meret, pontosan ketto egy A4 lapon.
- * @param {Array<{number: number, name: string, game_name: ?string, vote_url: string}>} teams
+ * Csapat beleptetolap: A5, ketto egy A4 lapon. Nem kiallitasra valo, hanem
+ * ezzel csatlakoznak a sajat csapatukhoz: rajta a kod, a szervercim, es egy
+ * QR, amit telefonrol tovabb tudnak kuldeni maguknak a munkagepre.
+ *
+ * @param {Array<{number:number, code:string, console_url:string}>} teams
  */
-export async function teamsPdf(teams) {
+export async function teamSheetPdf(teams, { base = '' } = {}) {
   const gap = mm(4);
   const ticketH = (USABLE.height - gap) / 2;
-  const doc = newDoc('Nitrogames csapat QR-ív');
-  const qrs = await Promise.all(teams.map((t) => qrPngBuffer(t.vote_url, { size: 700 })));
+  const doc = newDoc('Nitrogames csapat belépők');
+  const qrs = await Promise.all(teams.map((t) => qrPngBuffer(t.console_url, { size: 600 })));
+  const host = base.replace(/^https?:\/\//, '');
 
   teams.forEach((team, i) => {
-    const slot = i % 2;
-    if (slot === 0) doc.addPage();
+    if (i % 2 === 0) doc.addPage();
 
     const x = MARGIN;
-    const y = MARGIN + slot * (ticketH + gap);
+    const y = MARGIN + (i % 2) * (ticketH + gap);
     cutBox(doc, x, y, USABLE.width, ticketH);
 
-    const title = `${team.number}. csapat`;
-    const subtitle = team.game_name || (team.name === title ? null : team.name);
-    const qrSize = mm(70);
-    const innerW = USABLE.width - mm(20);
-    const innerX = x + mm(10);
+    const padding = mm(10);
+    const qrSize = mm(52);
+    const leftW = USABLE.width - qrSize - 3 * padding;
+    const lx = x + padding;
+    let cy = y + padding + mm(4);
 
-    // Elore kiszamoljuk a magassagot, hogy fuggolegesen kozepre kerulhessen.
-    doc.font('bold').fontSize(30);
-    const titleH = doc.heightOfString(title, { width: innerW });
-    doc.font('bold').fontSize(16);
-    const subH = subtitle ? doc.heightOfString(subtitle, { width: innerW }) + mm(1) : 0;
-    const total = titleH + subH + mm(4) + qrSize + mm(4) + mm(9);
+    doc.font('bold').fontSize(26).fillColor(INK)
+      .text(`${team.number}. csapat`, lx, cy, { width: leftW });
+    cy += mm(13);
 
-    let cursor = y + (ticketH - total) / 2;
+    doc.font('sans').fontSize(10).fillColor(MUTED)
+      .text('A csapatkódotok, ezzel éritek el az API-t:', lx, cy, { width: leftW });
+    cy += mm(6);
 
     doc.font('bold').fontSize(30).fillColor(INK)
-      .text(title, innerX, cursor, { width: innerW, align: 'center' });
-    cursor += titleH;
+      .text(team.code, lx, cy, { width: leftW, characterSpacing: 1.5 });
+    cy += mm(15);
 
-    if (subtitle) {
-      doc.font('bold').fontSize(16).fillColor(INK)
-        .text(subtitle, innerX, cursor + mm(1), { width: innerW, align: 'center' });
-      cursor += subH;
-    }
+    doc.font('sans').fontSize(10).fillColor(MUTED)
+      .text('A szerver címe:', lx, cy, { width: leftW });
+    cy += mm(5);
+    doc.font('bold').fontSize(12).fillColor(INK)
+      .text(host, lx, cy, { width: leftW, lineBreak: false });
+    cy += mm(10);
 
-    cursor += mm(4);
-    doc.image(qrs[i], x + (USABLE.width - qrSize) / 2, cursor, { width: qrSize });
-    cursor += qrSize + mm(4);
+    doc.font('sans').fontSize(9).fillColor(MUTED).text(
+      'Olvassátok be a QR-kódot telefonnal, és küldjétek át magatoknak Teamsen arra a gépre, '
+      + 'amin fejlesztetek. A megnyíló oldal mindent megmutat: mit kell feltölteni, és mi hiányzik még.',
+      lx, cy, { width: leftW, lineGap: 1.5 }
+    );
 
-    doc.font('sans').fontSize(10).fillColor(INK)
-      .text('Olvasd be, és pontozd ezt a játékot!', innerX, cursor, { width: innerW, align: 'center' });
-    doc.font('sans').fontSize(7.5).fillColor(MUTED)
-      .text(team.vote_url, innerX, cursor + mm(5), { width: innerW, align: 'center', lineBreak: false });
+    const qx = x + USABLE.width - padding - qrSize;
+    const qy = y + (ticketH - qrSize - mm(6)) / 2;
+    doc.image(qrs[i], qx, qy, { width: qrSize });
+    doc.font('sans').fontSize(8).fillColor(MUTED)
+      .text('Csapat konzol', qx, qy + qrSize + mm(2), { width: qrSize, align: 'center', lineBreak: false });
   });
 
   if (!teams.length) {
@@ -158,9 +152,4 @@ export async function teamsPdf(teams) {
   }
 
   return toBuffer(doc);
-}
-
-/** Egy csapat sajat A5 tablaja, hogy ok maguk is ki tudjak nyomtatni. */
-export async function singleTeamPdf(team) {
-  return teamsPdf([team]);
 }
