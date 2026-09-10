@@ -344,7 +344,7 @@ code.key:hover { border-color: var(--accent); }
   padding: 0 20px 40px;
 }
 
-.sheet.voters { grid-template-columns: repeat(3, 1fr); }
+.sheet.voters { grid-template-columns: repeat(var(--cols, 4), 1fr); }
 .sheet.teams { grid-template-columns: repeat(2, 1fr); }
 
 .ticket {
@@ -352,31 +352,101 @@ code.key:hover { border-color: var(--accent); }
   color: #10121b;
   border: 1px dashed #b9c0cf;
   border-radius: 10px;
-  padding: 14px;
+  padding: 12px;
   text-align: center;
   break-inside: avoid;
   page-break-inside: avoid;
 }
 
-.ticket img { width: 100%; max-width: 190px; height: auto; display: block; margin: 0 auto 8px; }
-.ticket h3 { margin: 0 0 2px; font-size: 16px; letter-spacing: -0.01em; }
+.ticket img { width: 100%; height: auto; display: block; margin: 0 auto; }
+.ticket h3 { margin: 4px 0 0; font-size: 15px; letter-spacing: -0.01em; }
+.ticket p { margin: 3px 0 0; font-size: 11px; color: #5b6377; line-height: 1.35; }
+
 .ticket .code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 21px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.16em;
-  margin: 4px 0 2px;
+  margin: 3px 0 0;
 }
-.ticket p { margin: 2px 0 0; font-size: 11.5px; color: #5b6377; line-height: 1.35; }
-.ticket .big { font-size: 26px; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.02em; }
+
+.ticket .big { font-size: 26px; font-weight: 800; margin: 0; letter-spacing: -0.02em; }
+
+/* Kepernyon a csapatcetli az A5 aranyat mutatja (210 x 148.5 mm). */
+.ticket.team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  aspect-ratio: 210 / 148.5;
+  padding: 18px;
+}
+
+.ticket.team img { max-width: 40%; }
+.ticket.team .big { font-size: 30px; }
+.ticket.team h3 { font-size: 19px; }
+
+/* ---------- nyomtatasi elrendezes ----------
+   Csapat: A5, ketto egy A4 lapon.  Szavazo: suru racs, minimalis szoveg. */
 
 @media print {
-  @page { margin: 10mm; }
-  body { background: #fff !important; color: #000 !important; }
+  @page { size: A4 portrait; margin: 8mm; }
+
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
   body::before, body::after { display: none !important; }
-  .print-toolbar, .topbar, .no-print { display: none !important; }
-  .sheet { padding: 0; gap: 8px; }
-  .ticket { border-color: #999; }
+  .print-toolbar, .topbar, .no-print, .toast { display: none !important; }
+
+  .sheet {
+    display: block !important;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    font-size: 0; /* kiszedi az inline-block elemek kozotti szokozt */
+  }
+
+  .ticket {
+    display: inline-block;
+    vertical-align: top;
+    border-color: #b0b6c4;
+    border-radius: 6px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Szavazoi cetli: csak QR es kod. */
+  .sheet.voters .ticket {
+    width: calc(100% / var(--cols, 4));
+    padding: 2.5mm 1.5mm 1.5mm;
+    border: 1px dashed #c3c8d4;
+    border-radius: 0;
+    margin: 0 0 -1px -1px; /* egybefuggo vagoracs */
+  }
+
+  .sheet.voters .ticket img { max-width: 32mm; }
+  .sheet.voters .ticket .code { font-size: 13pt; line-height: 1.15; margin-top: 1mm; }
+  .sheet.voters .ticket p { font-size: 6.5pt; line-height: 1.15; margin-top: 0.5mm; }
+
+  /* Csapatcetli: pontosan fel A4. */
+  .sheet.teams .ticket {
+    width: 100%;
+    height: 134mm;
+    margin: 0 0 4mm;
+    aspect-ratio: auto;
+    padding: 8mm;
+    overflow: hidden;
+  }
+
+  .sheet.teams .ticket:nth-child(2n) { page-break-after: always; }
+  .sheet.teams .ticket:last-child { page-break-after: auto; }
+  .sheet.teams .ticket img { max-width: 76mm; max-height: 76mm; }
+  .sheet.teams .ticket .big { font-size: 32pt; }
+  .sheet.teams .ticket h3 { font-size: 16pt; }
+  .sheet.teams .ticket p { font-size: 9pt; }
 }
 
 @media (max-width: 720px) {

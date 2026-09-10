@@ -14,7 +14,9 @@
 <div class="print-toolbar no-print">
   <a class="mini" href="/admin#csapatok">← Vissza az adminba</a>
   <button class="btn" id="print">Nyomtatás</button>
-  <span class="muted small">Ezt teheted ki a csapatok táblájára. A csapatok a saját QR-jüket az API-ról is lekérhetik.</span>
+  <span class="muted small" id="info">
+    A5 méret, két csapat kerül egy A4 lapra. Vágd félbe, és tedd ki a csapatok asztalára.
+  </span>
 </div>
 
 <div class="sheet teams" id="sheet"></div>
@@ -26,16 +28,20 @@ document.getElementById('print').addEventListener('click', () => window.print())
 
 api('/api/admin/teams')
   .then(({ teams }) => {
+    const active = teams.filter((t) => t.active);
+    document.getElementById('info').textContent =
+      `${active.length} csapat · ${Math.ceil(active.length / 2)} A4 lap (A5-ös cetlik, félbevágva)`;
+
     document.getElementById('sheet').replaceChildren(
-      ...teams.filter((t) => t.active).map((t) => {
+      ...active.map((t) => {
         const sub = t.game_name || (t.name === `${t.number}. csapat` ? null : t.name);
-        return el('div', { class: 'ticket' },
+        return el('div', { class: 'ticket team' },
           el('div', { class: 'big' }, `${t.number}. csapat`),
           sub ? el('h3', {}, sub) : null,
           el('img', {
             alt: `QR: ${t.name}`,
             loading: 'lazy',
-            src: `/api/admin/qr?format=png&size=420&data=${encodeURIComponent(t.vote_url)}`,
+            src: `/api/admin/qr?format=png&size=520&data=${encodeURIComponent(t.vote_url)}`,
           }),
           el('p', {}, 'Olvasd be, és pontozd ezt a játékot!'),
           el('p', { style: { fontSize: '10px', color: '#8b93a5' } }, t.vote_url)

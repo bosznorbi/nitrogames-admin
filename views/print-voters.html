@@ -14,6 +14,15 @@
 <div class="print-toolbar no-print">
   <a class="mini" href="/admin#szavazok">← Vissza az adminba</a>
   <button class="btn" id="print">Nyomtatás</button>
+  <label class="row tight" style="gap:6px">
+    <span class="small muted">Oszlop / A4:</span>
+    <select id="cols" style="width:auto;padding:6px 10px;font-size:14px">
+      <option value="3">3 oszlop</option>
+      <option value="4" selected>4 oszlop</option>
+      <option value="5">5 oszlop</option>
+      <option value="6">6 oszlop</option>
+    </select>
+  </label>
   <label class="switch"><input type="checkbox" id="onlyNew"><i></i><span>Csak a még be nem lépettek</span></label>
   <span class="muted small" id="count"></span>
 </div>
@@ -23,30 +32,40 @@
 <script type="module">
 import { api, el, toast } from '/static/js/app.js';
 
+const $ = (id) => document.getElementById(id);
 let voters = [];
+const host = location.host;
 
 function render() {
-  const list = document.getElementById('onlyNew').checked ? voters.filter((v) => !v.activated) : voters;
-  document.getElementById('count').textContent = `${list.length} papír`;
-  document.getElementById('sheet').replaceChildren(
+  const cols = Number($('cols').value);
+  const list = $('onlyNew').checked ? voters.filter((v) => !v.activated) : voters;
+  // A4 (8 mm margoval) hasznos terulete 194 x 281 mm, ebbol jon a becsles.
+  const inner = 194 / cols - 3;
+  const rowH = Math.min(inner, 32) + 13;
+  const perPage = cols * Math.floor(281 / rowH);
+
+  $('sheet').style.setProperty('--cols', String(cols));
+  $('count').textContent =
+    `${list.length} cetli · ${perPage} db / A4 · kb. ${Math.ceil(list.length / perPage)} lap`;
+
+  $('sheet').replaceChildren(
     ...list.map((v) =>
       el('div', { class: 'ticket' },
         el('img', {
-          alt: `QR: ${v.code}`,
+          alt: v.code,
           loading: 'lazy',
-          src: `/api/admin/qr?format=png&size=320&data=${encodeURIComponent(v.login_url)}`,
+          src: `/api/admin/qr?format=png&size=300&data=${encodeURIComponent(v.login_url)}`,
         }),
-        el('h3', {}, 'Szavazó belépő'),
         el('div', { class: 'code' }, v.code),
-        el('p', {}, 'Olvasd be a telefonoddal. Elég egyszer, utána a böngésződ megjegyez.'),
-        el('p', {}, 'Ha nem megy: nyisd meg a szavazóoldalt és írd be a fenti kódot.')
+        el('p', {}, host)
       )
     )
   );
 }
 
-document.getElementById('print').addEventListener('click', () => window.print());
-document.getElementById('onlyNew').addEventListener('change', render);
+$('print').addEventListener('click', () => window.print());
+$('onlyNew').addEventListener('change', render);
+$('cols').addEventListener('change', render);
 
 api('/api/admin/voters')
   .then((r) => { voters = r.voters; render(); })
