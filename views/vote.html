@@ -63,10 +63,10 @@ function inkFor(hex) {
  * színes rajzként kilógnának ebből a pixeles felületből.
  */
 const ARCOK = [
-  { szo: 'Hát...', szem: 'y="6"', szaj: 'M4,12 L7,13 L12,10' },
-  { szo: 'Elmegy', szem: 'y="6"', szaj: 'M5,11.5 L11,11.5' },
-  { szo: 'Jó', szem: 'y="5"', szaj: 'M4,10 L6,12.5 L10,12.5 L12,10' },
-  { szo: 'Nagyon jó', szem: 'y="5"', szaj: 'M3.5,9.5 L12.5,9.5 L11,13 L5,13 Z' },
+  { szo: 'Hát...', szem: 6, szaj: 'M4,12.6 L6.5,10.6 L10,10.9 L12,12.2' },
+  { szo: 'Elmegy', szem: 6, szaj: 'M4.5,11.6 L11.5,11.6' },
+  { szo: 'Jó', szem: 5, szaj: 'M4,10.2 L6,12.6 L10,12.6 L12,10.2' },
+  { szo: 'Nagyon jó', szem: 5, szaj: 'M3.5,9.6 L12.5,9.6 L11,13.2 L5,13.2 Z' },
 ];
 
 function arcSvg(index) {
@@ -74,9 +74,10 @@ function arcSvg(index) {
   const kitolt = index === 3;
   const wrap = document.createElement('span');
   wrap.className = 'arc';
-  wrap.innerHTML = `<svg viewBox="0 0 16 16" aria-hidden="true">
-      <rect x="4" ${a.szem} width="2" height="2"/>
-      <rect x="10" ${a.szem} width="2" height="2"/>
+  // A szemek is currentColor: enélkül feketék lennének, és eltűnnének a sötét gombon.
+  wrap.innerHTML = `<svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
+      <rect x="4" y="${a.szem}" width="2" height="2"/>
+      <rect x="10" y="${a.szem}" width="2" height="2"/>
       <path d="${a.szaj}" fill="${kitolt ? 'currentColor' : 'none'}"
             stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"/>
     </svg>`;
