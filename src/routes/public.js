@@ -20,7 +20,6 @@ function tile(t, voted) {
     label: teamLabel(t),
     accent_color: t.accent_color || '#7c5cff',
     icon_url: t.icon_file ? `/uploads/${t.icon_file}` : null,
-    icon_done_url: t.icon_done_file ? `/uploads/${t.icon_done_file}` : null,
     voted,
   };
 }

@@ -21,12 +21,7 @@ const KINDS = {
   icon: {
     mezo: 'icon_file',
     nev: 'csempekép',
-    leiras: 'A főoldal 3x3-as rácsában ez a kép jelöli a játékotokat. Négyzetes, átlátszó PNG ajánlott.',
-  },
-  icon_done: {
-    mezo: 'icon_done_file',
-    nev: 'csempekép szavazás után',
-    leiras: 'Opcionális. Ha feltöltitek, erre vált a csempe, miután valaki szavazott rátok. Pipát mi teszünk rá.',
+    leiras: 'A főoldal 3x3-as rácsában ez a kép jelöli a játékotokat. Álló, 3:4 arányú, kitölti a csempét.',
   },
 };
 
@@ -58,7 +53,6 @@ function teamView(team, req) {
     szin: t.accent_color || '#7c5cff',
     hatterkep_url: t.background_file ? `${base}/uploads/${t.background_file}` : null,
     csempekep_url: t.icon_file ? `${base}/uploads/${t.icon_file}` : null,
-    csempekep_kesz_url: t.icon_done_file ? `${base}/uploads/${t.icon_done_file}` : null,
     szavazolap_url: `${base}/t/${t.public_id}`,
     qr_url: `${base}/api/csapat/qr`,
     frissitve: t.updated_at,
@@ -116,12 +110,6 @@ function checklist(team, req) {
   ];
 
   const opcionalis = [
-    {
-      kulcs: 'csempekep_kesz',
-      kesz: Boolean(t.icon_done_file),
-      teendo: 'Opcionális: külön csempekép arra az állapotra, amikor már szavaztak rátok.',
-      hogyan: `POST ${base}/api/csapat/csempekep-kesz`,
-    },
     {
       kulcs: 'mottó',
       kesz: Boolean(t.tagline),
@@ -301,7 +289,6 @@ function handleDelete(kind) {
 for (const [utvonal, kind] of [
   ['hatterkep', 'background'],
   ['csempekep', 'icon'],
-  ['csempekep-kesz', 'icon_done'],
 ]) {
   teamRouter.post(`/${utvonal}`, handleUpload(kind));
   teamRouter.put(`/${utvonal}`, handleUpload(kind));
@@ -353,8 +340,7 @@ teamRouter.use((req, res) => {
       'GET    /api/csapat/allapot      csak a készültség: mi hiányzik még',
       'PUT    /api/csapat              { csapatnev, jatek_neve, mottó, leiras, szin }',
       'POST   /api/csapat/hatterkep    kép, pontosan 1080x1920',
-      'POST   /api/csapat/csempekep    kép, pontosan 512x512',
-      'POST   /api/csapat/csempekep-kesz  opcionális, 512x512',
+      'POST   /api/csapat/csempekep    kép, pontosan 600x800 (álló)',
       'GET    /api/csapat/qr           saját QR kód, format=png|svg|json',
     ],
   });

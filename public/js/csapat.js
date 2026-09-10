@@ -45,7 +45,7 @@ function checklistCard(k) {
     el('div', { class: 'todo' },
       ...items.map((i) =>
         el('div', { class: `todo-item ${i.kesz ? 'ok' : ''}` },
-          el('div', { class: 'todo-mark' }, i.kesz ? '✓' : '·'),
+          el('div', { class: 'todo-mark' }, i.kesz ? el('i', { class: 'tick' }) : ''),
           el('div', {},
             el('strong', {}, i.teendo),
             i.kesz ? null : el('code', {}, i.hogyan)
@@ -112,16 +112,12 @@ function render() {
       el('div', { class: 'tile-preview', style: t.csempekep_url ? { backgroundImage: `url("${t.csempekep_url}")` } : {} },
         t.csempekep_url ? '' : 'nincs')),
 
-    uploadCard('csempekep-kesz', 'Csempekép szavazás után', kepek.icon_done,
-      el('div', { class: 'tile-preview', style: t.csempekep_kesz_url ? { backgroundImage: `url("${t.csempekep_kesz_url}")` } : {} },
-        t.csempekep_kesz_url ? '' : 'nincs')),
-
     docsCard(t, kepek)
   );
 
   $('f_color').addEventListener('input', (e) => { $('f_szin').value = e.target.value; });
   $('save').addEventListener('click', save_fields);
-  for (const kind of ['hatterkep', 'csempekep', 'csempekep-kesz']) wireUpload(kind);
+  for (const kind of ['hatterkep', 'csempekep']) wireUpload(kind);
 }
 
 function field(id, label, value, placeholder, multi = false) {
@@ -185,7 +181,7 @@ function wireUpload(kind) {
     const file = e.target.files[0];
     if (!file) return;
     const status = $(`st_${kind}`);
-    const spec = state.kepek[{ hatterkep: 'background', csempekep: 'icon', 'csempekep-kesz': 'icon_done' }[kind]];
+    const spec = state.kepek[{ hatterkep: 'background', csempekep: 'icon' }[kind]];
 
     status.textContent = 'Feldolgozás…';
     status.style.color = '';
@@ -285,7 +281,6 @@ function docsCard(t, kepek) {
       ep('PUT', '/api/csapat', 'csapatnev, jatek_neve, mottó, leiras, szin'),
       ep('POST', '/api/csapat/hatterkep', `${kepek.background.width}x${kepek.background.height}`),
       ep('POST', '/api/csapat/csempekep', `${kepek.icon.width}x${kepek.icon.height}`),
-      ep('POST', '/api/csapat/csempekep-kesz', `${kepek.icon_done.width}x${kepek.icon_done.height}, opcionális`),
       ep('GET', '/api/csapat/qr', 'A saját QR-kódotok. format=png|svg|json')
     ),
     el('pre', { class: 'code' }, curl),

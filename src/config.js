@@ -38,8 +38,7 @@ export const config = {
   eventName: process.env.EVENT_NAME || 'Nitrogames',
   image: {
     background: { width: int(process.env.BG_WIDTH, 1080), height: int(process.env.BG_HEIGHT, 1920) },
-    icon: { width: int(process.env.ICON_SIZE, 512), height: int(process.env.ICON_SIZE, 512) },
-    icon_done: { width: int(process.env.ICON_SIZE, 512), height: int(process.env.ICON_SIZE, 512) },
+    icon: { width: int(process.env.ICON_WIDTH, 600), height: int(process.env.ICON_HEIGHT, 800) },
     maxBytes: int(process.env.MAX_UPLOAD_BYTES, 4 * 1024 * 1024),
     formats: ['image/png', 'image/jpeg', 'image/webp'],
   },

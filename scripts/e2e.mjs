@@ -170,7 +170,7 @@ check('rossz szín elutasítva',
   (await teamApi.fetch('/api/csapat', { method: 'PUT', headers, json: { szin: 'piros' } })).status === 400);
 
 const bg = makePng(1080, 1920);
-const icon = makePng(512, 512);
+const icon = makePng(600, 800);
 check('háttérkép feltöltés',
   (await teamApi.fetch('/api/csapat/hatterkep', { method: 'POST', headers: { ...headers, 'content-type': 'image/png' }, body: bg })).status === 200);
 check('rossz méret elutasítva',
@@ -185,6 +185,8 @@ check('QR lekérés', qr.status === 200 && qr.body.szavazolap_url.includes('/t/'
 
 const status1 = await teamApi.fetch('/api/csapat/allapot', { headers });
 check('készültség: minden megvan', status1.body.kesz === true, JSON.stringify(status1.body.hianyzik));
+check('nincs második csempekép végpont',
+  (await teamApi.fetch('/api/csapat/csempekep-kesz', { method: 'POST', headers: { ...headers, 'content-type': 'image/png' }, body: icon })).status === 404);
 check('a QR lekérés is bejelölődött', status1.body.kesz_elemek.includes('qr_letoltve'));
 check('csapat nem látja a szavazatokat', (await teamApi.fetch('/api/csapat/szavazatok', { headers })).status === 403);
 check('ismeretlen végpont felsorolja a jókat',

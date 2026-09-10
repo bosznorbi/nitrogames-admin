@@ -93,7 +93,6 @@ function teamRow(t, base) {
     active: Boolean(t.active),
     background_url: t.background_file ? `/uploads/${t.background_file}` : null,
     icon_url: t.icon_file ? `/uploads/${t.icon_file}` : null,
-    icon_done_url: t.icon_done_file ? `/uploads/${t.icon_done_file}` : null,
     vote_url: `${base}/t/${t.public_id}`,
     ready: missing.length === 0,
     missing,
@@ -146,7 +145,7 @@ adminRouter.patch('/teams/:id', (req, res) => {
 adminRouter.delete('/teams/:id', (req, res) => {
   const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(req.params.id);
   if (!team) return res.status(404).json({ error: 'not_found' });
-  for (const f of [team.background_file, team.icon_file, team.icon_done_file]) {
+  for (const f of [team.background_file, team.icon_file]) {
     if (f) fs.rm(path.join(config.uploadDir, f), { force: true }, () => {});
   }
   db.prepare('DELETE FROM teams WHERE id = ?').run(team.id);
@@ -367,14 +366,14 @@ adminRouter.post('/reset', (req, res) => {
       // A csapatok es a szavazok azonositoja megmarad: a kodjaik es a
       // QR-jeik elore ki vannak nyomtatva, azokat nem szabad eldobni.
       // Csak a csapatok altal feltoltott tartalom nullazodik.
-      for (const t of db.prepare('SELECT background_file, icon_file, icon_done_file FROM teams').all()) {
-        for (const f of [t.background_file, t.icon_file, t.icon_done_file]) {
+      for (const t of db.prepare('SELECT background_file, icon_file FROM teams').all()) {
+        for (const f of [t.background_file, t.icon_file]) {
           if (f) fs.rm(path.join(config.uploadDir, f), { force: true }, () => {});
         }
       }
       db.prepare(`UPDATE teams SET
         name = NULL, game_name = NULL, tagline = NULL, description = NULL,
-        background_file = NULL, icon_file = NULL, icon_done_file = NULL,
+        background_file = NULL, icon_file = NULL,
         qr_fetched_at = NULL, updated_at = datetime('now')`).run();
       db.prepare('UPDATE voters SET is_activated = 0, last_seen_at = NULL').run();
     }

@@ -10,9 +10,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { qrPngBuffer } from './qr.js';
 
-const FONT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../assets/fonts');
-const REGULAR = path.join(FONT_DIR, 'DejaVuSans.ttf');
-const BOLD = path.join(FONT_DIR, 'DejaVuSans-Bold.ttf');
+const ASSETS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../assets');
+const REGULAR = path.join(ASSETS, 'fonts/DejaVuSans.ttf');
+const BOLD = path.join(ASSETS, 'fonts/DejaVuSans-Bold.ttf');
+const LOGO = path.join(ASSETS, 'logo-full-blue.png');
 
 /** Millimeter -> PDF pont. */
 const mm = (v) => v * 2.834645669;
@@ -109,6 +110,8 @@ export async function teamSheetPdf(teams, { base = '' } = {}) {
     cutBox(doc, x, y, USABLE.width, ticketH);
 
     const padding = mm(10);
+    // A Nitrowise logó a lap tetején: ez hivatalos kiosztott papír.
+    doc.image(LOGO, x + padding, y + mm(8), { width: mm(40) });
     const qrSize = mm(52);
     const leftW = USABLE.width - qrSize - 3 * padding;
     const lx = x + padding;

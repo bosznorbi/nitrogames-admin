@@ -57,7 +57,6 @@ CREATE TABLE IF NOT EXISTS teams (
   accent_color    TEXT,
   background_file TEXT,
   icon_file       TEXT,
-  icon_done_file  TEXT,
   qr_fetched_at   TEXT,
   active          INTEGER NOT NULL DEFAULT 1,
   created_at      TEXT NOT NULL DEFAULT (datetime('now')),
@@ -123,7 +122,6 @@ for (const [col, def] of [
   ['public_id', 'TEXT'],
   ['api_code', 'TEXT'],
   ['icon_file', 'TEXT'],
-  ['icon_done_file', 'TEXT'],
   ['qr_fetched_at', 'TEXT'],
 ]) {
   addColumn('teams', col, def);

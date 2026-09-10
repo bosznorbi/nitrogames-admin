@@ -10,12 +10,15 @@ beolvasásával pontozzák őket.
 - **Névtelen belépő cetlik.** Mindenki kap egy papírt QR-rel és egy négybetűs
   kóddal. Nincs regisztráció, nincs név, a kódok anonimak.
 - **A csapatok maguk töltik fel a játékukat.** Csapatnév, játéknév, leírás,
-  háttérkép és csempekép, papírról begépelhető kóddal, API-n keresztül.
+  háttérkép és egy álló csempekép, papírról begépelhető kóddal, API-n keresztül.
 - **A szerver megmondja, mi hiányzik.** Egy végpont felsorolja, mit kell még
   beállítani ahhoz, hogy a csapat készen álljon.
 - **Admin felület.** Élő eredmények, szempontonkénti bontás, nyomtatható
   PDF-ek, kivetítő nézet. Mobilon is használható.
 - **Dinamikus szempontok.** Skála és súly is szerkeszthető, akár verseny közben.
+- **Arcade megjelenés.** Pixelfontok a repóban (nincs CDN-függés), kemény
+  árnyékok, scanline. A Nitrowise logó a fejlécben, a faviconban és a
+  nyomtatott csapatlapon.
 
 ## Tartalom
 
@@ -68,7 +71,7 @@ Törölni nem lehet, a teljes nullázást is túléli.
 | `PUBLIC_BASE_URL` | A QR-kódokba kerülő nyilvános cím. Localhoston hagyd üresen. |
 | `EVENT_NAME` | Fejlécben megjelenő név. |
 | `BG_WIDTH` / `BG_HEIGHT` | Kötelező háttérkép-méret, alapból 1080 x 1920. |
-| `ICON_SIZE` | Kötelező csempekép-méret, alapból 512. |
+| `ICON_WIDTH` / `ICON_HEIGHT` | Kötelező csempekép-méret, alapból 600 x 800. |
 | `MAX_UPLOAD_BYTES` | Feltöltési méretkorlát, alapból 4 MB. |
 
 ### Hasznos parancsok
@@ -206,8 +209,7 @@ nagybetű mindegy. Alternatívák: `X-Csapat-Kod` fejléc vagy `?kod=` paraméte
 | `GET` | `/api/csapat` | Minden adat és a készültség. |
 | `PUT` | `/api/csapat` | `csapatnev`, `jatek_neve`, `mottó`, `leiras`, `szin` |
 | `POST` | `/api/csapat/hatterkep` | Háttérkép, pontosan 1080 x 1920. |
-| `POST` | `/api/csapat/csempekep` | Csempekép, pontosan 512 x 512. |
-| `POST` | `/api/csapat/csempekep-kesz` | Opcionális, csempekép szavazás után. |
+| `POST` | `/api/csapat/csempekep` | Csempekép, pontosan 600 x 800 (álló). |
 | `GET` | `/api/csapat/qr` | A saját QR-kódjuk. `format=png\|svg\|json` |
 
 A készültség végpont válasza megmondja a következő lépést is:
@@ -220,7 +222,7 @@ A készültség végpont válasza megmondja a következő lépést is:
   "uzenet": "Még 2 dolog hiányzik.",
   "kovetkezo_lepes": {
     "kulcs": "csempekep",
-    "teendo": "Töltsetek fel csempeképet, pontosan 512x512 képpont.",
+    "teendo": "Töltsetek fel csempeképet, pontosan 600x800 képpont.",
     "hogyan": "POST https://.../api/csapat/csempekep"
   },
   "hianyzik": [ ... ]
@@ -266,6 +268,26 @@ curl -H "Authorization: Bearer ABCD-1234" \
 
 A PDF-ek `?nezet=inline` paraméterrel a böngészőben nyílnak meg letöltés
 helyett, így telefonról a megosztás gombbal továbbküldhetők Teamsen.
+
+## Megjelenés és márkajelzés
+
+A felület arcade-pixeles: `Silkscreen` a feliratokhoz, `Pixelify Sans` a
+folyó szöveghez. Mindkét betűtípus a `public/fonts/` mappában van, tehát
+**nincs CDN-függés**, a rendezvény wifijétől függetlenül működik. Mindkettő
+tartalmazza a magyar ő és ű betűt.
+
+A Nitrowise logó a `public/img/` mappában:
+
+| Fájl | Hol használjuk |
+| --- | --- |
+| `logo-mark-white.svg` | Fejléc minden oldalon, négyzetes jel |
+| `logo-mark.svg` | `currentColor` változat, tetszőleges színhez |
+| `logo-full-white.svg` | Kivetítő nézet, széles, szöveges változat |
+| `icon.svg` + PNG-k | Favicon, `apple-touch-icon`, webmanifest |
+| `assets/logo-full-blue.png` | A csapat belépőlap PDF fejléce |
+
+Az esemény neve **Nitrogames**, a cégé **Nitrowise**: a fejlécben a Nitrowise
+jel áll az esemény neve mellett.
 
 ## Hogyan számoljuk az eredményt
 
