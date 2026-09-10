@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0a0b10">
+<meta name="robots" content="noindex">
+<title>Nitrogames admin</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+
+<div class="admin-shell">
+
+  <div class="admin-top">
+    <a class="brand" href="/admin"><span class="dot"></span><span>Nitrogames admin</span></a>
+    <div class="row tight">
+      <a class="mini" href="/admin/eredmeny" target="_blank" rel="noopener">Kivetítő nézet</a>
+      <a class="mini" href="/api/admin/export/votes.csv">CSV export</a>
+      <button class="mini" id="logout">Kilépés</button>
+    </div>
+  </div>
+
+  <div class="big-toggle" id="votingBox">
+    <div>
+      <strong id="votingLabel">Szavazás állapota</strong>
+      <p class="small muted" style="margin:2px 0 0" id="votingHint">Töltés…</p>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="votingOpen"><i></i>
+      <span id="votingText">-</span>
+    </label>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab on" data-panel="vezerles" role="tab">Áttekintés</button>
+    <button class="tab" data-panel="csapatok" role="tab">Csapatok</button>
+    <button class="tab" data-panel="szempontok" role="tab">Szempontok</button>
+    <button class="tab" data-panel="szavazok" role="tab">Szavazók</button>
+    <button class="tab" data-panel="eredmenyek" role="tab">Eredmények</button>
+  </div>
+
+  <!-- ---------- Áttekintés ---------- -->
+  <section class="panel" id="panel-vezerles">
+    <div class="stats" id="stats"></div>
+
+    <div class="card">
+      <h2 style="margin-top:0">Beállítások</h2>
+      <div id="switches"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0">Szövegek</h2>
+      <label class="field">
+        <span>Esemény neve</span>
+        <input type="text" id="eventName" maxlength="60">
+      </label>
+      <label class="field">
+        <span>Bevezető szöveg a szavazóknak</span>
+        <textarea id="introText" maxlength="300"></textarea>
+      </label>
+      <button class="btn" id="saveTexts">Szövegek mentése</button>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0">Nyomtatás</h2>
+      <p class="small muted" style="margin-top:0">
+        A szavazói ívet vágd fel és oszd szét: mindenki egy papírt kap. A csapatívet
+        a csapatok táblájára lehet kitenni.
+      </p>
+      <div class="row tight">
+        <a class="mini" href="/admin/nyomtatas/szavazok" target="_blank" rel="noopener">Szavazói QR-ív</a>
+        <a class="mini" href="/admin/nyomtatas/csapatok" target="_blank" rel="noopener">Csapat QR-ív</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0; color:var(--danger)">Veszélyes zóna</h2>
+      <p class="small muted" style="margin-top:0">
+        Minden szavazat és megjegyzés törlése. A csapatok, szempontok és szavazók megmaradnak.
+      </p>
+      <button class="mini danger" id="resetVotes">Összes szavazat törlése</button>
+    </div>
+  </section>
+
+  <!-- ---------- Csapatok ---------- -->
+  <section class="panel" id="panel-csapatok" hidden>
+    <div class="card" style="margin-bottom:16px">
+      <div class="row">
+        <label class="field" style="margin:0;max-width:280px;flex:1">
+          <span>Csapatok száma (feltölti eddig a számig)</span>
+          <input type="number" id="teamCount" min="0" max="100" step="1">
+        </label>
+        <button class="btn" id="setTeamCount" style="margin-top:18px">Beállít</button>
+        <button class="btn ghost" id="addTeam" style="margin-top:18px">+ Egy csapat</button>
+      </div>
+    </div>
+
+    <div class="scroll-x">
+      <table class="grid" id="teamsTable">
+        <thead><tr>
+          <th>#</th><th>Kép</th><th>Csapat</th><th>Játék</th><th>API kulcs</th>
+          <th class="num">Szavazat</th><th>QR</th><th></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="small muted">Az API kulcsra kattintva a vágólapra másolódik. Ezt add oda a csapatnak.</p>
+  </section>
+
+  <!-- ---------- Szempontok ---------- -->
+  <section class="panel" id="panel-szempontok" hidden>
+    <div class="card" style="margin-bottom:16px">
+      <h2 style="margin-top:0">Új szempont</h2>
+      <div class="row">
+        <label class="field grow" style="margin:0;min-width:180px">
+          <span>Név</span><input type="text" id="cLabel" maxlength="60" placeholder="Pl. Újrajátszhatóság">
+        </label>
+        <label class="field" style="margin:0;width:90px">
+          <span>Min</span><input type="number" id="cMin" value="1">
+        </label>
+        <label class="field" style="margin:0;width:90px">
+          <span>Max</span><input type="number" id="cMax" value="5">
+        </label>
+        <label class="field" style="margin:0;width:100px">
+          <span>Súly</span><input type="number" id="cWeight" value="1" step="0.5">
+        </label>
+        <button class="btn" id="addCriterion" style="margin-top:18px">Hozzáad</button>
+      </div>
+      <label class="field" style="margin:12px 0 0">
+        <span>Leírás (a szavazók ezt látják)</span>
+        <input type="text" id="cDesc" maxlength="200" placeholder="Mit értékeljenek ennél a szempontnál?">
+      </label>
+    </div>
+
+    <div class="scroll-x">
+      <table class="grid" id="criteriaTable">
+        <thead><tr>
+          <th>Sorrend</th><th>Név / leírás</th><th>Skála</th><th>Súly</th><th>Aktív</th><th></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="small muted">
+      A súly az összesített pontszámban számít: a rendszer minden szempontot 0-100 közé
+      normalizál, majd súlyozott átlagot számol, így különböző skálák is keverhetők.
+    </p>
+  </section>
+
+  <!-- ---------- Szavazók ---------- -->
+  <section class="panel" id="panel-szavazok" hidden>
+    <div class="card" style="margin-bottom:16px">
+      <div class="row">
+        <label class="field grow" style="margin:0;max-width:220px">
+          <span>Hány új szavazót generáljunk?</span>
+          <input type="number" id="voterCount" min="1" max="500" value="60">
+        </label>
+        <button class="btn" id="addVoters" style="margin-top:18px">Generálás</button>
+        <a class="btn ghost" href="/admin/nyomtatas/szavazok" target="_blank" rel="noopener" style="margin-top:18px">Nyomtatható ív</a>
+      </div>
+    </div>
+
+    <div class="scroll-x">
+      <table class="grid" id="votersTable">
+        <thead><tr>
+          <th>Kód</th><th>Név</th><th>Csapata</th><th>Belépett</th>
+          <th class="num">Szavazott</th><th>Utoljára</th><th></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="small muted">
+      A „Csapata” mezővel jelölhető, ki melyik csapat tagja. Ha a saját csapatra szavazás
+      tiltva van, ők nem szavazhatnak a saját játékukra.
+    </p>
+  </section>
+
+  <!-- ---------- Eredmények ---------- -->
+  <section class="panel" id="panel-eredmenyek" hidden>
+    <div class="row" style="justify-content:space-between;margin-bottom:16px">
+      <div class="stats grow" id="resultStats" style="margin:0"></div>
+      <label class="switch" style="margin-left:auto">
+        <input type="checkbox" id="autoRefresh" checked><i></i><span>Automatikus frissítés</span>
+      </label>
+    </div>
+
+    <h2>Összesített sorrend</h2>
+    <div class="rank-list" id="ranking"></div>
+
+    <h2>Kategóriagyőztesek</h2>
+    <div class="winners" id="winners"></div>
+
+    <h2>Részletes bontás</h2>
+    <div class="scroll-x">
+      <table class="grid" id="breakdown"><thead></thead><tbody></tbody></table>
+    </div>
+
+    <h2>Megjegyzések</h2>
+    <div class="stack" id="comments"></div>
+  </section>
+
+</div>
+
+<script type="module" src="/static/js/admin.js"></script>
+</body>
+</html>

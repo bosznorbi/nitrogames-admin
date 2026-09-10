@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Csapat QR-ív</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+
+<div class="print-toolbar no-print">
+  <a class="mini" href="/admin#csapatok">← Vissza az adminba</a>
+  <button class="btn" id="print">Nyomtatás</button>
+  <span class="muted small">Ezt teheted ki a csapatok táblájára. A csapatok a saját QR-jüket az API-ról is lekérhetik.</span>
+</div>
+
+<div class="sheet teams" id="sheet"></div>
+
+<script type="module">
+import { api, el, toast } from '/static/js/app.js';
+
+document.getElementById('print').addEventListener('click', () => window.print());
+
+api('/api/admin/teams')
+  .then(({ teams }) => {
+    document.getElementById('sheet').replaceChildren(
+      ...teams.filter((t) => t.active).map((t) => {
+        const sub = t.game_name || (t.name === `${t.number}. csapat` ? null : t.name);
+        return el('div', { class: 'ticket' },
+          el('div', { class: 'big' }, `${t.number}. csapat`),
+          sub ? el('h3', {}, sub) : null,
+          el('img', {
+            alt: `QR: ${t.name}`,
+            loading: 'lazy',
+            src: `/api/admin/qr?format=png&size=420&data=${encodeURIComponent(t.vote_url)}`,
+          }),
+          el('p', {}, 'Olvasd be, és pontozd ezt a játékot!'),
+          el('p', { style: { fontSize: '10px', color: '#8b93a5' } }, t.vote_url)
+        );
+      })
+    );
+  })
+  .catch((err) => {
+    if (err.status === 401) location.href = '/admin/login';
+    else toast(err.message, true);
+  });
+</script>
+</body>
+</html>

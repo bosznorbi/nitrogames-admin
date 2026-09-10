@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0a0b10">
+<meta name="robots" content="noindex">
+<title>Eredmények</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/admin.css">
+<style>
+  .stage-wrap { max-width: 1100px; margin: 0 auto; padding: 26px 24px 60px; }
+  .stage-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; margin-bottom: 26px; }
+  .stage-head h1 { font-size: 40px; margin: 0; }
+  .board { display: grid; gap: 12px; }
+  .board .rank { grid-template-columns: 70px 1fr auto; padding: 18px 22px; }
+  .board .rank-pos { font-size: 34px; }
+  .board .rank:nth-child(1) .rank-pos { font-size: 42px; }
+  .board .rank-title { font-size: 23px; }
+  .board .rank-score b { font-size: 32px; }
+  .hidden-scores .rank-score b, .hidden-scores .rank-pos { filter: blur(13px); }
+  .winners .winner b { font-size: 17px; }
+</style>
+</head>
+<body>
+
+<div class="stage-wrap">
+  <div class="stage-head">
+    <div>
+      <h1 id="title">Eredmények</h1>
+      <p class="muted" id="sub">Töltés…</p>
+    </div>
+    <div class="row tight no-print">
+      <label class="switch"><input type="checkbox" id="blur"><i></i><span>Pontok elrejtése</span></label>
+      <button class="mini" id="refresh">Frissítés</button>
+      <a class="mini" href="/admin">Admin</a>
+    </div>
+  </div>
+
+  <div class="board" id="board"></div>
+
+  <h2 style="font-size:22px;margin-top:38px">Kategóriagyőztesek</h2>
+  <div class="winners" id="winners"></div>
+</div>
+
+<script type="module">
+import { api, el, toast } from '/static/js/app.js';
+
+const $ = (id) => document.getElementById(id);
+
+/** Ne ismetlodjon a cim, ha a csapatnak meg nincs jatekneve. */
+function rankSub(t) {
+  const title = t.game_name || t.name;
+  return title === `${t.number}. csapat`
+    ? `${t.voters} szavazó`
+    : `${t.number}. csapat · ${t.voters} szavazó`;
+}
+
+async function load() {
+  const r = await api('/api/admin/results');
+  $('sub').textContent =
+    `${r.stats.voters_voted} / ${r.stats.voters_total} szavazó · ${r.stats.submissions} szavazólap · ` +
+    (r.stats.voting_open ? 'a szavazás még nyitva' : 'a szavazás lezárva');
+
+  const best = r.ranking.find((x) => x.total_pct !== null);
+  const maxPct = best ? best.total_pct : 100;
+
+  $('board').replaceChildren(
+    ...r.ranking.map((t) =>
+      el('div', { class: 'rank', style: { '--team': t.accent_color } },
+        el('div', { class: 'rank-pos' }, t.rank ? String(t.rank) : '-'),
+        el('div', {},
+          el('div', { class: 'rank-title' }, t.game_name || t.name),
+          el('div', { class: 'rank-sub' }, rankSub(t)),
+          el('div', { class: 'meter' }, el('i', {
+            style: { width: `${t.total_pct === null ? 0 : Math.round((t.total_pct / (maxPct || 1)) * 100)}%` },
+          }))
+        ),
+        el('div', { class: 'rank-score' },
+          el('b', {}, t.total_pct === null ? '-' : String(t.total_pct)),
+          el('span', {}, 'pont / 100')
+        )
+      )
+    )
+  );
+
+  $('winners').replaceChildren(
+    ...r.category_winners.map((w) =>
+      el('div', { class: 'winner' },
+        el('small', {}, w.label),
+        w.winner
+          ? el('div', {},
+              el('b', {}, w.winner.game_name || w.winner.name),
+              el('span', {}, `${w.winner.number}. csapat · átlag ${w.winner.avg}`))
+          : el('span', {}, 'Még nincs szavazat')
+      )
+    )
+  );
+}
+
+$('blur').addEventListener('change', (e) => {
+  document.getElementById('board').classList.toggle('hidden-scores', e.target.checked);
+});
+$('refresh').addEventListener('click', () => load().catch((err) => toast(err.message, true)));
+
+load().catch((err) => {
+  if (err.status === 401) location.href = '/admin/login';
+  else toast(err.message, true);
+});
+setInterval(() => load().catch(() => {}), 8000);
+</script>
+</body>
+</html>
