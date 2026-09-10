@@ -135,9 +135,12 @@ const server = app.listen(config.port, '0.0.0.0', () => {
   console.log('');
 });
 
+const VIRTUAL_NIC = /vethernet|virtual|vmware|hyper-v|tailscale|zerotier|docker|wsl/i;
+
 function localIps() {
   const out = [];
-  for (const list of Object.values(os.networkInterfaces())) {
+  for (const [name, list] of Object.entries(os.networkInterfaces())) {
+    if (VIRTUAL_NIC.test(name)) continue;
     for (const n of list || []) {
       if (n.family === 'IPv4' && !n.internal) out.push(n.address);
     }

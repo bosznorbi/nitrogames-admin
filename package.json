@@ -6,13 +6,13 @@
   "type": "module",
   "main": "src/server.js",
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
   },
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "seed": "node scripts/seed.js",
-    "lan": "node scripts/lan.js"
+    "lan": "node scripts/lan.js",
+    "demo": "node scripts/demo-votes.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",
