@@ -123,8 +123,18 @@ a privát hálózaton. Kézzel, rendszergazdaként:
 netsh advfirewall firewall add rule name="Nitrogames 3000" dir=in action=allow protocol=TCP localport=3000
 ```
 
+Ha közben **másik wifire vagy hotspotra váltasz**, a gép IP címe megváltozik.
+Ilyenkor nem kell újraindítani: az admin Áttekintés fülén (és a QR-kódok
+oldalon) a **Hálózati cím frissítése** gomb újra felismeri a címet, és onnantól
+minden QR-kód az újat tartalmazza.
+
+A csapatok QR-kódjait az `/admin/qr-kodok` oldalon egyben látod. Nyisd meg a
+gépeden, és olvasd be őket a telefonoddal a képernyőről: így végig tudod
+próbálni a szavazást, mintha körbejárnál a teremben.
+
 Élesben a `PUBLIC_BASE_URL` felülír mindent, tehát Railwayen a valódi domain
-kerül a kódokba.
+kerül a kódokba, és a frissítés gomb el is tűnik, mert ott nincs mit
+frissíteni.
 
 ## Kitelepítés Railwayre
 
@@ -296,6 +306,7 @@ curl -H "Authorization: Bearer ABCD-1234" \
 | `/t/:azonosito` | Egy csapat szavazólapja, csak QR-ből érhető el |
 | `/csapat` | Csapat konzol, kóddal |
 | `/admin` | Admin felület (jelszó) |
+| `/admin/qr-kodok` | A csapatok szavazó QR-kódjai egy rácsban, képernyőről beolvasva |
 | `/admin/eredmeny` | Kivetítő nézet |
 | `/api/admin/print/voters.pdf` | Szavazói belépők (`?cols=3..6`, `?only_new=1`) |
 | `/api/admin/print/teams.pdf` | Csapat belépők, A5, kettő egy A4-en |

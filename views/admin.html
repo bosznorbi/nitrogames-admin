@@ -19,6 +19,7 @@
   <div class="admin-top">
     <span class="brand"><img src="/static/img/logo-mark-white.svg" alt="Nitrowise" width="26" height="24"><span>Nitrogames admin</span></span>
     <div class="row tight">
+      <a class="mini" href="/admin/qr-kodok" target="_blank" rel="noopener">QR-kódok</a>
       <a class="mini" href="/admin/eredmeny" target="_blank" rel="noopener">Kivetítő</a>
       <button class="mini" id="logout">Kilépés</button>
     </div>
@@ -78,7 +79,15 @@
         <div class="qr-box" style="width:150px;flex:0 0 auto"><img id="mainQr" alt="Fő QR-kód"></div>
         <div style="min-width:200px;flex:1">
           <p style="margin:0 0 8px;word-break:break-all"><a id="mainUrl" href="/" target="_blank" rel="noopener"></a></p>
-          <p class="small muted" id="baseWarn" style="margin:0"></p>
+          <p class="small muted" id="baseWarn" style="margin:0 0 10px"></p>
+          <div id="lanBox" hidden>
+            <button class="mini" id="refreshLan">Hálózati cím frissítése</button>
+            <p class="small muted" style="margin:10px 0 0">
+              Ha másik wifire vagy hotspotra váltasz, ezzel íratod át a QR-kódokat
+              az új címre. Újraindítás nem kell. Railwayen ez a gomb eltűnik, ott a
+              beállított domain kerül a kódokba.
+            </p>
+          </div>
         </div>
       </div>
     </div>

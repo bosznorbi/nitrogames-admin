@@ -9,6 +9,7 @@ import { ADMIN_COOKIE, adminCookieOpts, rateLimit, requireAdmin, signAdminSessio
 import { formatCode, safeEqual, slugify } from '../lib/ids.js';
 import { qrPngBuffer, qrSvg } from '../lib/qr.js';
 import { teamSheetPdf, votersPdf } from '../lib/pdf.js';
+import { detectLanIp, lanIp, localIps } from '../lib/lan.js';
 
 export const adminRouter = express.Router();
 
@@ -39,6 +40,8 @@ adminRouter.get('/overview', (req, res) => {
   res.json({
     settings: allSettings(),
     base_url: baseUrl(req),
+    // Élesben a PUBLIC_BASE_URL rögzíti a címet, ott nincs mit frissíteni.
+    base_url_fixed: Boolean(config.publicBaseUrl),
     test_code: TEST_CODE,
     counts: {
       teams: one('SELECT COUNT(*) AS c FROM teams WHERE active = 1'),
@@ -68,6 +71,24 @@ adminRouter.put('/settings', (req, res) => {
     applied[key] = value;
   }
   res.json({ ok: true, applied, settings: allSettings() });
+});
+
+/**
+ * Hálózatváltás után (másik wifi, hotspot) a gép IP címe megváltozik, és a
+ * QR kódok a régi címre mutatnának. Ez újra felismeri a címet, futás közben.
+ */
+adminRouter.post('/halozat/frissites', async (req, res) => {
+  const elotte = lanIp();
+  const utana = await detectLanIp();
+  res.json({
+    ok: true,
+    valtozott: elotte !== utana,
+    elotte,
+    ip: utana,
+    base_url: baseUrl(req),
+    rogzitett: Boolean(config.publicBaseUrl),
+    tobbi: localIps().map((a) => ({ ip: a.ip, nev: a.name })),
+  });
 });
 
 /* ---------- csapatok ---------- */

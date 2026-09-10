@@ -90,6 +90,7 @@ app.post('/api/session/logout', (_req, res) => {
 app.get('/admin/login', view('admin-login.html'));
 app.get('/admin', requireAdminPage, view('admin.html'));
 app.get('/admin/eredmeny', requireAdminPage, view('admin-results.html'));
+app.get('/admin/qr-kodok', requireAdminPage, view('admin-qr.html'));
 
 /* ---------- API ---------- */
 

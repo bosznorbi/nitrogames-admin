@@ -233,6 +233,15 @@ check('a szavazatok is törlődtek', (await admin.fetch('/api/admin/results')).b
 check('az új kód végpont megszűnt',
   (await admin.fetch(`/api/admin/teams/${utana[0].id}/new-code`, { method: 'POST' })).status === 404);
 
+console.log('\n--- halozati cim es QR oldal ---');
+const halo = await admin.fetch('/api/admin/halozat/frissites', { method: 'POST' });
+check('a hálózati cím újra felismerhető', halo.status === 200 && typeof halo.body.base_url === 'string');
+check('a frissítés megmondja, változott-e', typeof halo.body.valtozott === 'boolean');
+check('QR oldal belépve elérhető', (await admin.fetch('/admin/qr-kodok')).status === 200);
+check('QR oldal jelszó nélkül átirányít', (await new Session().fetch('/admin/qr-kodok')).status === 302);
+check('a frissítés jelszó nélkül tiltott',
+  (await new Session().fetch('/api/admin/halozat/frissites', { method: 'POST' })).status === 401);
+
 console.log('\n--- PDF ---');
 const vPdf = await admin.fetch('/api/admin/print/voters.pdf?cols=4', { binary: true });
 check('szavazói PDF', vPdf.status === 200 && vPdf.body.subarray(0, 5).toString() === '%PDF-');

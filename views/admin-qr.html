@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#060a12">
+<meta name="robots" content="noindex">
+<title>Csapat QR-kódok</title>
+<link rel="icon" href="/static/img/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+<link rel="manifest" href="/static/site.webmanifest">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/admin.css">
+<style>
+  .qr-wrap { max-width: 1280px; margin: 0 auto; padding: 0 20px 60px; }
+
+  .qr-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+
+  .qr-card {
+    border: 3px solid var(--line);
+    border-top: 8px solid var(--team, var(--cyan));
+    background: var(--panel);
+    box-shadow: var(--px) var(--px) 0 var(--shadow);
+    padding: 14px;
+    text-align: center;
+  }
+
+  /* A QR fehér alapon, nagy kontraszttal: képernyőről kell beolvasni. */
+  .qr-card .sheet {
+    background: #fff;
+    border: 3px solid #000;
+    padding: 10px;
+  }
+
+  .qr-card img { width: 100%; height: auto; display: block; }
+
+  .qr-card small {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 10px;
+    color: var(--cyan);
+    margin: 12px 0 4px;
+  }
+
+  .qr-card b {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 12px;
+    text-transform: uppercase;
+    line-height: 1.5;
+    min-height: 3em;
+  }
+
+  @media (max-width: 900px) { .qr-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .qr-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="qr-wrap">
+  <div class="admin-top">
+    <div class="row tight">
+      <a class="back" href="/admin" aria-label="Vissza az adminba">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+      </a>
+      <span class="brand"><img src="/static/img/logo-mark-white.svg" alt="Nitrowise" width="26" height="24"><span>Csapat QR-kódok</span></span>
+    </div>
+    <div class="row tight">
+      <label class="row tight" style="gap:8px">
+        <span class="small muted">Méret</span>
+        <select id="meret" style="width:auto">
+          <option value="1">kicsi</option>
+          <option value="2" selected>közepes</option>
+          <option value="3">nagy</option>
+        </select>
+      </label>
+      <button class="mini" id="frissit" hidden>Hálózati cím frissítése</button>
+      <a class="mini" href="/api/admin/print/teams.pdf">Csapat belépők (PDF)</a>
+    </div>
+  </div>
+
+  <p class="lead" id="intro">
+    Ezek a QR-kódok visznek a csapatok szavazólapjára. Olvasd be őket a
+    telefonoddal erről a képernyőről, és úgy tudod végigpróbálni a szavazást,
+    mintha körbejárnál a teremben.
+  </p>
+
+  <div class="qr-grid" id="grid"></div>
+</div>
+
+<script type="module">
+import { api, el, toast } from '/static/js/app.js';
+
+const $ = (id) => document.getElementById(id);
+const OSZLOP = { 1: 4, 2: 3, 3: 2 };
+let teams = [];
+
+function render() {
+  const oszlop = OSZLOP[$('meret').value] || 3;
+  $('grid').style.gridTemplateColumns = `repeat(${oszlop}, 1fr)`;
+
+  if (!teams.length) {
+    $('grid').replaceChildren(el('div', { class: 'note' }, 'Még nincs aktív csapat.'));
+    return;
+  }
+
+  $('grid').replaceChildren(
+    ...teams.map((t) =>
+      el('div', { class: 'qr-card', style: { '--team': t.accent_color || '#2ee8ff' } },
+        el('div', { class: 'sheet' },
+          el('img', {
+            alt: `${t.number}. csapat QR-kódja`,
+            src: `/api/admin/qr?format=png&size=900&data=${encodeURIComponent(t.vote_url)}`,
+          })
+        ),
+        el('small', {}, `${t.number}. csapat`),
+        // Ne írjuk ki kétszer ugyanazt, amíg a csapat nem adott nevet a játéknak.
+        t.label === `${t.number}. csapat`
+          ? el('b', { class: 'muted' }, 'még nincs neve')
+          : el('b', {}, t.label)
+      )
+    )
+  );
+}
+
+$('meret').addEventListener('change', render);
+
+async function betolt() {
+  const r = await api('/api/admin/teams');
+  teams = r.teams.filter((t) => t.active);
+  $('intro').textContent = teams.length
+    ? `${teams.length} csapat. Olvasd be őket a telefonoddal erről a képernyőről, és úgy tudod végigpróbálni a szavazást, mintha körbejárnál a teremben.`
+    : 'Még nincs aktív csapat. Az admin Csapatok fülén hozz létre párat.';
+  render();
+}
+
+$('frissit').addEventListener('click', async () => {
+  const btn = $('frissit');
+  btn.disabled = true;
+  try {
+    const r = await api('/api/admin/halozat/frissites', { method: 'POST' });
+    toast(r.valtozott ? `Új cím: ${r.ip}` : 'A cím nem változott');
+    await betolt();
+  } catch (err) {
+    toast(err.message, true);
+  }
+  btn.disabled = false;
+});
+
+api('/api/admin/overview')
+  .then((o) => {
+    // Élesben a cím rögzített, ott nincs mit frissíteni.
+    $('frissit').hidden = o.base_url_fixed;
+    return betolt();
+  })
+  .catch((err) => {
+    if (err.status === 401) location.href = '/admin/login';
+    else toast(err.message, true);
+  });
+</script>
+</body>
+</html>

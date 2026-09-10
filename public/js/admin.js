@@ -76,9 +76,15 @@ async function loadOverview() {
   $('mainQr').src = `/api/admin/qr?format=png&size=600&data=${encodeURIComponent(state.baseUrl)}`;
   $('mainUrl').textContent = state.baseUrl;
   $('mainUrl').href = state.baseUrl;
-  $('baseWarn').textContent = /localhost|127\.0\.0\.1/.test(state.baseUrl)
-    ? 'Figyelem: ez localhost cím, telefonról nem érhető el. A hálózati címen (192.168.x.x) vagy az éles domainen nyisd meg az admint, mielőtt QR-t nyomtatsz.'
-    : '';
+  // A hálózati cím frissítése csak helyi futtatásnál értelmes: élesben a
+  // PUBLIC_BASE_URL rögzíti a címet.
+  const helyi = !data.base_url_fixed;
+  $('lanBox').hidden = !helyi;
+  $('baseWarn').textContent = data.base_url_fixed
+    ? 'Rögzített nyilvános cím (PUBLIC_BASE_URL). Ez kerül minden QR-kódba.'
+    : /localhost|127\.0\.0\.1/.test(state.baseUrl)
+      ? 'Nem találtam hálózati címet, ezért localhost került ide. Telefonról ez nem érhető el.'
+      : 'Ez a gép hálózati címe. Minden QR-kód erre mutat, tehát telefonról is működik.';
 
   $('eventName').value = state.settings.event_name || '';
   $('readyText').value = state.settings.ready_text || '';
@@ -126,6 +132,22 @@ async function reset(scope, question) {
     toast(err.message, true);
   }
 }
+
+$('refreshLan').addEventListener('click', async () => {
+  const btn = $('refreshLan');
+  btn.disabled = true;
+  try {
+    const r = await api('/api/admin/halozat/frissites', { method: 'POST' });
+    if (r.rogzitett) toast('A PUBLIC_BASE_URL van beállítva, azt nem írjuk felül');
+    else if (r.valtozott) toast(`Új cím: ${r.ip}`);
+    else toast('A cím nem változott');
+    await loadOverview();
+    await loadTeams();
+  } catch (err) {
+    toast(err.message, true);
+  }
+  btn.disabled = false;
+});
 
 $('logout').addEventListener('click', async () => {
   await api('/api/admin/logout', { method: 'POST' }).catch(() => {});
