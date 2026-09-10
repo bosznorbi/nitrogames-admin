@@ -112,7 +112,8 @@ export async function teamSheetPdf(teams, { base = '' } = {}) {
     const qrSize = mm(52);
     const leftW = USABLE.width - qrSize - 3 * padding;
     const lx = x + padding;
-    let cy = y + padding + mm(4);
+    // A bal oldali blokk kozelitoleg 66 mm magas, ezt kozepre tesszuk.
+    let cy = y + (ticketH - mm(66)) / 2;
 
     doc.font('bold').fontSize(26).fillColor(INK)
       .text(`${team.number}. csapat`, lx, cy, { width: leftW });
