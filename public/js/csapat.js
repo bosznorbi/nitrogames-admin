@@ -143,7 +143,8 @@ function uploadCard(kind, title, spec, preview) {
         el('div', { class: 'note', style: { marginBottom: '11px' } },
           el('strong', {}, `Pontosan ${spec.width} × ${spec.height} képpont`),
           el('div', { class: 'small muted' },
-            `PNG, JPEG vagy WebP · legfeljebb ${Math.round(spec.max_bytes / 1024 / 1024)} MB. Más méretet az API elutasít.`)
+            `PNG, JPEG vagy WebP. Itt bármilyen méretű képet feltölthetsz, középre igazítva levágjuk. `
+            + `Az API viszont pontos méretet vár, ha kódból töltötök fel.`)
         ),
         el('div', { class: 'row tight' },
           el('input', { type: 'file', id: `up_${kind}`, accept: 'image/png,image/jpeg,image/webp', style: { flex: '1', minWidth: '160px' } }),
@@ -155,6 +156,30 @@ function uploadCard(kind, title, spec, preview) {
   );
 }
 
+/**
+ * Az API pontos meretet var. Itt a bongeszoben vagjuk meretre, hogy ne a
+ * csapatnak kelljen kepszerkesztovel bajlodnia: kozepre igazitva kitoltjuk
+ * a celmeretet, a kilogo reszt levagjuk.
+ */
+async function fitToSize(file, width, height) {
+  const bmp = await createImageBitmap(file);
+  if (bmp.width === width && bmp.height === height) return { buffer: await file.arrayBuffer(), type: file.type, resized: false };
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+
+  const scale = Math.max(width / bmp.width, height / bmp.height);
+  const w = bmp.width * scale;
+  const h = bmp.height * scale;
+  ctx.drawImage(bmp, (width - w) / 2, (height - h) / 2, w, h);
+
+  const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
+  return { buffer: await blob.arrayBuffer(), type: 'image/png', resized: true, from: `${bmp.width}×${bmp.height}` };
+}
+
 function wireUpload(kind) {
   $(`up_${kind}`).addEventListener('change', async (e) => {
     const file = e.target.files[0];
@@ -162,22 +187,21 @@ function wireUpload(kind) {
     const status = $(`st_${kind}`);
     const spec = state.kepek[{ hatterkep: 'background', csempekep: 'icon', 'csempekep-kesz': 'icon_done' }[kind]];
 
+    status.textContent = 'Feldolgozás…';
+    status.style.color = '';
+    let payload;
     try {
-      const bmp = await createImageBitmap(file);
-      if (bmp.width !== spec.width || bmp.height !== spec.height) {
-        status.textContent = `A választott kép ${bmp.width} × ${bmp.height}, de pontosan ${spec.width} × ${spec.height} kell.`;
-        status.style.color = 'var(--danger)';
-        return;
-      }
+      payload = await fitToSize(file, spec.width, spec.height);
     } catch {
-      // Ha a bongeszo nem tudja dekodolni, a szerver ugyis ellenorzi.
+      status.textContent = 'Ezt a fájlt nem tudom képként megnyitni.';
+      status.style.color = 'var(--danger)';
+      return;
     }
 
     status.textContent = 'Feltöltés…';
-    status.style.color = '';
     try {
-      await call(`/api/csapat/${kind}`, { method: 'POST', body: await file.arrayBuffer(), contentType: file.type });
-      toast('Feltöltve');
+      await call(`/api/csapat/${kind}`, { method: 'POST', body: payload.buffer, contentType: payload.type });
+      toast(payload.resized ? `Méretre vágva (${payload.from}) és feltöltve` : 'Feltöltve');
       load();
     } catch (err) {
       status.textContent = err.message;
