@@ -45,8 +45,10 @@ class Session {
       this.cookies.set(pair.slice(0, i), pair.slice(i + 1));
     }
     const type = res.headers.get('content-type') || '';
-    const body = type.includes('json') ? await res.json().catch(() => null) : await res.text();
-    return { status: res.status, body, location: res.headers.get('location') };
+    let body;
+    if (opts.binary) body = Buffer.from(await res.arrayBuffer());
+    else body = type.includes('json') ? await res.json().catch(() => null) : await res.text();
+    return { status: res.status, body, type, location: res.headers.get('location') };
   }
 }
 
@@ -145,6 +147,29 @@ check('sulyozott pontszam 0-100 kozott', withVotes.total_pct >= 0 && withVotes.t
 check('kategoriagyoztesek szempontonkent', results.body.category_winners.length === 6);
 const csv = await admin.fetch('/api/admin/export/votes.csv');
 check('CSV export', csv.status === 200 && csv.body.split('\r\n').length > 100);
+
+console.log('\n--- nyomtathato PDF-ek ---');
+const pdfPages = (buf) => (buf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+
+const votersPdfRes = await admin.fetch('/api/admin/print/voters.pdf?cols=4', { binary: true });
+check('szavazoi PDF letoltheto', votersPdfRes.status === 200 && votersPdfRes.type.includes('pdf'));
+check('szavazoi PDF ervenyes fejleccel', votersPdfRes.body.subarray(0, 5).toString() === '%PDF-');
+const voterCount = (await admin.fetch('/api/admin/voters')).body.voters.length;
+check('szavazoi PDF oldalszama stimmel (24 / lap)',
+  pdfPages(votersPdfRes.body) === Math.ceil(voterCount / 24),
+  `${pdfPages(votersPdfRes.body)} oldal ${voterCount} cetlihez`);
+
+const teamsPdfRes = await admin.fetch('/api/admin/print/teams.pdf', { binary: true });
+check('csapat PDF letoltheto', teamsPdfRes.status === 200 && teamsPdfRes.body.subarray(0, 5).toString() === '%PDF-');
+check('csapat PDF ketto per lap',
+  pdfPages(teamsPdfRes.body) === Math.ceil(TEAMS / 2),
+  `${pdfPages(teamsPdfRes.body)} oldal ${TEAMS} csapathoz`);
+
+const ownPdf = await new Session().fetch('/api/team/me/tabla.pdf', { binary: true, headers: { authorization: `Bearer ${key}` } });
+check('csapat sajat tabla PDF-je', ownPdf.status === 200 && ownPdf.body.subarray(0, 5).toString() === '%PDF-');
+check('PDF jelszo nelkul nem erheto el',
+  (await new Session().fetch('/api/admin/print/teams.pdf')).status === 401);
+
 
 console.log('\n--- takaritas ---');
 await admin.fetch(`/api/admin/criteria/${critId}?force=1`, { method: 'DELETE' });

@@ -6,6 +6,7 @@ import { allSettings, createTeam, createVoters, db, getBool, setSetting } from '
 import { ADMIN_COOKIE, adminCookieOpts, rateLimit, requireAdmin, signAdminSession } from '../middleware/auth.js';
 import { apiKey, safeEqual, slugify } from '../lib/ids.js';
 import { qrPngBuffer, qrSvg } from '../lib/qr.js';
+import { teamsPdf, votersPdf } from '../lib/pdf.js';
 
 export const adminRouter = express.Router();
 
@@ -471,6 +472,44 @@ adminRouter.post('/reset-votes', (req, res) => {
     db.prepare('DELETE FROM submissions').run();
   })();
   res.json({ ok: true, deleted: before });
+});
+
+/* ---------- nyomtathato PDF-ek ---------- */
+
+adminRouter.get('/print/voters.pdf', async (req, res, next) => {
+  try {
+    const base = baseUrl(req);
+    const onlyNew = req.query.only_new === '1';
+    const rows = db
+      .prepare(`SELECT token, code, is_activated FROM voters ${onlyNew ? 'WHERE is_activated = 0' : ''} ORDER BY id`)
+      .all();
+    const voters = rows.map((v) => ({ code: v.code, login_url: `${base}/v/${v.token}` }));
+    const pdf = await votersPdf(voters, {
+      cols: Number(req.query.cols) || 4,
+      host: new URL(base).host,
+    });
+    res.type('application/pdf');
+    res.set('Content-Disposition', 'attachment; filename="nitrogames-szavazoi-belepok.pdf"');
+    res.send(pdf);
+  } catch (err) {
+    next(err);
+  }
+});
+
+adminRouter.get('/print/teams.pdf', async (req, res, next) => {
+  try {
+    const base = baseUrl(req);
+    const teams = db
+      .prepare('SELECT number, name, game_name, slug FROM teams WHERE active = 1 ORDER BY number')
+      .all()
+      .map((t) => ({ ...t, vote_url: `${base}/t/${t.slug}` }));
+    const pdf = await teamsPdf(teams);
+    res.type('application/pdf');
+    res.set('Content-Disposition', 'attachment; filename="nitrogames-csapat-tablak.pdf"');
+    res.send(pdf);
+  } catch (err) {
+    next(err);
+  }
 });
 
 /* ---------- QR generalas (admin only) ---------- */

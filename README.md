@@ -176,8 +176,9 @@ elég, és nem kell külön Postgres service-t fizetni. Ha később mégis kelle
 1. Deploy Railwayre, `PUBLIC_BASE_URL` beállítva, volume mountolva.
 2. Admin: csapatok száma beállítva, szempontok véglegesítve.
 3. Admin: szavazók generálva (kicsit többet, mint ahányan lesztek, legyen tartalék).
-4. Nyomtatás: **Szavazói QR-ív** (alapból 24 db egy A4-en) felvágva, mindenki
-   kap egy cetlit. **Csapat QR-ív** (A5, kettő egy A4-en) félbevágva a csapatok asztalára.
+4. Nyomtatás: az admin **Áttekintés** fülén két gomb tölt le kész PDF-et.
+   A **szavazói belépők** (alapból 24 db egy A4-en) felvágva, mindenki kap egy cetlit.
+   A **csapat táblák** (A5, kettő egy A4-en) félbevágva a csapatok asztalára.
 5. A szavazás **zárva** marad, amíg a fejlesztés tart.
 6. Minden csapat megkapja az API kulcsát és a `/team` oldal címét.
 
@@ -224,6 +225,7 @@ kitöltött, másolható példakód is.
 | `DELETE` | `/api/team/me/background` | Háttérkép törlése. |
 | `POST` | `/api/team/me/logo` | Logó feltöltése. |
 | `GET` | `/api/team/me/qr` | Saját QR-kód. `format=png\|svg\|json`, `size=128..2048`. |
+| `GET` | `/api/team/me/tabla.pdf` | Nyomtatásra kész A5 tábla PDF-ben. |
 
 ### Képkövetelmények
 
@@ -289,8 +291,10 @@ A csapatok szándékosan **nem látják** a rájuk érkezett szavazatokat.
 | `/team` | Csapat konzol API kulccsal |
 | `/admin` | Admin felület (jelszó) |
 | `/admin/eredmeny` | Kivetítő nézet a díjkiosztóhoz |
-| `/admin/nyomtatas/szavazok` | Szavazói QR-ív nyomtatáshoz |
-| `/admin/nyomtatas/csapatok` | Csapat QR-ív nyomtatáshoz (A5) |
+| `/admin/nyomtatas/szavazok` | Szavazói QR-ív böngészős előnézete |
+| `/admin/nyomtatas/csapatok` | Csapat QR-ív böngészős előnézete |
+| `/api/admin/print/voters.pdf` | Szavazói belépők PDF-ben (`?cols=3..6`, `?only_new=1`) |
+| `/api/admin/print/teams.pdf` | Csapat táblák PDF-ben, A5, kettő egy A4-en |
 | `/healthz` | Állapotellenőrzés |
 
 ## Hogyan számoljuk az eredményt

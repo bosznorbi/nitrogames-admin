@@ -50,10 +50,11 @@ function render(team) {
           el('p', { style: { margin: '0 0 12px' } },
             el('a', { href: team.vote_url, target: '_blank', rel: 'noopener' }, team.vote_url)),
           el('div', { class: 'row tight' },
-            el('button', { class: 'mini', onclick: () => downloadQr('png', `${team.slug}-qr.png`) }, 'QR letöltése (PNG)'),
-            el('button', { class: 'mini', onclick: () => downloadQr('svg', `${team.slug}-qr.svg`) }, 'QR (SVG)')
+            el('button', { class: 'mini', onclick: () => download('/api/team/me/tabla.pdf', `${team.slug}-tabla.pdf`) }, 'Nyomtatható tábla (PDF)'),
+            el('button', { class: 'mini', onclick: () => download('/api/team/me/qr?format=png&size=1000', `${team.slug}-qr.png`) }, 'QR (PNG)'),
+            el('button', { class: 'mini', onclick: () => download('/api/team/me/qr?format=svg', `${team.slug}-qr.svg`) }, 'QR (SVG)')
           ),
-          el('p', { class: 'small muted' }, 'Ezt kinyomtathatjátok a saját táblátokra is.')
+          el('p', { class: 'small muted' }, 'A PDF A5 méretű, kész a nyomtatásra. A QR akkor is ugyanez marad, ha később átnevezitek a játékot.')
         )
       )
     ),
@@ -86,13 +87,11 @@ function render(team) {
   wireUpload('logo');
 }
 
-/** A QR-t a kulccsal a fejlecben kerjuk le, hogy ne kerüljon a cimsorba. */
-async function downloadQr(format, filename) {
+/** A kulcsot fejlecben kuldjuk, hogy ne kerüljon a cimsorba. */
+async function download(path, filename) {
   try {
-    const res = await fetch(`/api/team/me/qr?format=${format}&size=1000`, {
-      headers: { Authorization: `Bearer ${key}` },
-    });
-    if (!res.ok) throw new Error('Nem sikerült lekérni a QR-kódot.');
+    const res = await fetch(path, { headers: { Authorization: `Bearer ${key}` } });
+    if (!res.ok) throw new Error('Nem sikerült letölteni a fájlt.');
     const url = URL.createObjectURL(await res.blob());
     const a = Object.assign(document.createElement('a'), { href: url, download: filename });
     document.body.append(a);
@@ -250,7 +249,8 @@ function docsCard(team) {
       ep('POST', '/api/team/me/background', `Háttérkép, pontosan ${bg.width}x${bg.height}.`),
       ep('DELETE', '/api/team/me/background', 'Háttérkép törlése.'),
       ep('POST', '/api/team/me/logo', `Logó, pontosan ${spec.logo.width}x${spec.logo.height}.`),
-      ep('GET', '/api/team/me/qr', 'Saját QR kód. format=png|svg|json, size=128..2048.')
+      ep('GET', '/api/team/me/qr', 'Saját QR kód. format=png|svg|json, size=128..2048.'),
+      ep('GET', '/api/team/me/tabla.pdf', 'Nyomtatásra kész A5 tábla PDF-ben.')
     ),
 
     el('h3', { style: { fontSize: '15px', margin: '18px 0 8px' } }, 'curl példák'),

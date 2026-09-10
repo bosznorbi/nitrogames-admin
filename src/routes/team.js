@@ -6,6 +6,7 @@ import { db } from '../db.js';
 import { requireTeamKey, rateLimit } from '../middleware/auth.js';
 import { decodeImagePayload, inspectImage } from '../lib/imageinfo.js';
 import { qrPngBuffer, qrSvg } from '../lib/qr.js';
+import { singleTeamPdf } from '../lib/pdf.js';
 
 export const teamRouter = express.Router();
 
@@ -205,6 +206,24 @@ teamRouter.get('/me/qr', async (req, res, next) => {
   }
 });
 
+/** A sajat A5-os tablajuk nyomtatasra kesz PDF-ben. */
+teamRouter.get('/me/tabla.pdf', async (req, res, next) => {
+  try {
+    const t = db.prepare('SELECT * FROM teams WHERE id = ?').get(req.team.id);
+    const pdf = await singleTeamPdf({
+      number: t.number,
+      name: t.name,
+      game_name: t.game_name,
+      vote_url: `${baseUrl(req)}/t/${t.slug}`,
+    });
+    res.type('application/pdf');
+    res.set('Content-Disposition', `attachment; filename="${t.slug}-tabla.pdf"`);
+    res.send(pdf);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // A csapatok szandekosan nem latjak a rajuk erkezett szavazatokat.
 teamRouter.get('/me/votes', (_req, res) => {
   res.status(403).json({ error: 'forbidden', message: 'Az eredmények csak az admin felületen láthatók.' });
@@ -221,6 +240,7 @@ teamRouter.use((req, res) => {
       'DELETE /api/team/me/background',
       'POST   /api/team/me/logo',
       'GET    /api/team/me/qr?format=png|svg|json',
+      'GET    /api/team/me/tabla.pdf   (nyomtatható A5 tábla)',
     ],
   });
 });

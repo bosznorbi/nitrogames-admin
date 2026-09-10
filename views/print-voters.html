@@ -13,7 +13,8 @@
 
 <div class="print-toolbar no-print">
   <a class="mini" href="/admin#szavazok">← Vissza az adminba</a>
-  <button class="btn" id="print">Nyomtatás</button>
+  <a class="btn" id="pdf" href="/api/admin/print/voters.pdf?cols=4">PDF letöltése</a>
+  <button class="mini" id="print">Nyomtatás böngészőből</button>
   <label class="row tight" style="gap:6px">
     <span class="small muted">Oszlop / A4:</span>
     <select id="cols" style="width:auto;padding:6px 10px;font-size:14px">
@@ -45,6 +46,7 @@ function render() {
   const perPage = cols * Math.floor(281 / rowH);
 
   $('sheet').style.setProperty('--cols', String(cols));
+  $('pdf').href = `/api/admin/print/voters.pdf?cols=${cols}${$('onlyNew').checked ? '&only_new=1' : ''}`;
   $('count').textContent =
     `${list.length} cetli · ${perPage} db / A4 · kb. ${Math.ceil(list.length / perPage)} lap`;
 
