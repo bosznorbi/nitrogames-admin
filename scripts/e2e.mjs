@@ -108,7 +108,11 @@ for (const v of (await admin.fetch('/api/admin/voters')).body.voters) {
 }
 await admin.fetch('/api/admin/teams', { json: { count: 9 } });
 await admin.fetch('/api/admin/voters', { json: { count: 12 } });
-await admin.fetch('/api/admin/settings', { method: 'PUT', json: { voting_open: true } });
+// A teszt allitsa be a sajat elofeltetelet, ne fuggjon az aktualis beallitasoktol.
+await admin.fetch('/api/admin/settings', {
+  method: 'PUT',
+  json: { voting_open: true, require_all_criteria: true, allow_comments: true },
+});
 
 const overview = await admin.fetch('/api/admin/overview');
 check('9 csapat létrejött', overview.body.counts.teams === 9);
