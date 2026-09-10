@@ -16,9 +16,9 @@
   .szinpad {
     height: 100dvh;
     display: grid;
-    grid-template-rows: auto 1fr auto;
-    gap: 1.4vh;
-    padding: 2vh 2.4vw;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 1.6vh;
+    padding: 2vh 2.4vw 2.4vh;
   }
 
   .fejlec { display: flex; align-items: center; justify-content: space-between; gap: 2vw; }
@@ -67,9 +67,9 @@
     color: var(--muted);
   }
 
-  .oszlop.h1 .talp { height: 24vh; border-color: var(--amber); color: var(--amber); }
-  .oszlop.h2 .talp { height: 16vh; }
-  .oszlop.h3 .talp { height: 11vh; }
+  .oszlop.h1 .talp { height: 30vh; border-color: var(--amber); color: var(--amber); }
+  .oszlop.h2 .talp { height: 21vh; }
+  .oszlop.h3 .talp { height: 15vh; }
 
   /* ---------- csapatkártya ---------- */
 
@@ -77,46 +77,46 @@
     border: 3px solid var(--line);
     background: var(--panel);
     box-shadow: 4px 4px 0 var(--shadow);
-    padding: 1.1vh 1vw;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center;
-    gap: 1vw;
     cursor: pointer;
-    border-left: 8px solid var(--team, var(--line-lit));
   }
 
-  .csapat:hover { border-color: var(--cyan); border-left-color: var(--team, var(--cyan)); }
+  .csapat:hover { border-color: var(--cyan); }
 
-  .csapat .nev {
+  /* A dobogón a név a főszereplő: nagyban, a talp fölött, középen. */
+  .oszlop .csapat {
+    padding: 1.4vh 1vw;
+    text-align: center;
+    border-bottom: 8px solid var(--team, var(--line-lit));
+  }
+
+  .oszlop .csapat .nev {
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: clamp(11px, 2.1vh, 22px);
-    line-height: 1.25;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.2;
+    font-size: clamp(13px, 2.4vh, 26px);
+    overflow-wrap: anywhere;
   }
+
+  .oszlop .csapat .pont {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(12px, 2vh, 22px);
+    color: var(--amber);
+    margin-top: 0.4vh;
+  }
+
+  .oszlop .csapat .alcim { display: none; }
+
+  .oszlop.h1 .csapat { padding: 2vh 1vw; }
+  .oszlop.h1 .csapat .nev { font-size: clamp(16px, 3.4vh, 40px); }
+  .oszlop.h1 .csapat .pont { font-size: clamp(14px, 2.6vh, 30px); }
 
   /* Takart állapot: fix hosszú blokk, hogy a névhossz se áruljon el semmit. */
-  .csapat.rejtve { cursor: pointer; }
   .csapat.rejtve .nev { color: #35507a; letter-spacing: 0.05em; }
-  .csapat.rejtve .alcim { visibility: hidden; }
-
-  .csapat .alcim { font-size: clamp(9px, 1.4vh, 13px); color: var(--muted); }
-
-  .csapat .pont {
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: clamp(13px, 2.4vh, 26px);
-    color: var(--amber);
-    text-align: right;
-    white-space: nowrap;
-  }
 
   .csapat.felfedve {
     border-color: var(--team, var(--cyan));
-    background: color-mix(in srgb, var(--team, var(--cyan)) 12%, var(--panel));
+    background: color-mix(in srgb, var(--team, var(--cyan)) 14%, var(--panel));
     animation: felfed 0.5s steps(5);
   }
 
@@ -124,9 +124,6 @@
     0% { transform: scale(0.9); filter: brightness(2.4); }
     100% { transform: scale(1); filter: none; }
   }
-
-  .oszlop.h1 .csapat .nev { font-size: clamp(13px, 2.7vh, 30px); }
-  .oszlop.h1 .csapat .pont { font-size: clamp(15px, 3vh, 32px); }
 
   .megosztott {
     text-align: center;
@@ -141,22 +138,44 @@
   .mezony {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 0.9vh 1.2vw;
-    align-content: start;
+    gap: 1vh 1.2vw;
+    align-content: end;
     min-height: 0;
-    overflow: hidden;
   }
 
-  .mezony .csapat { padding: 0.8vh 0.9vw; box-shadow: 3px 3px 0 var(--shadow); }
-  .mezony .csapat .nev { font-size: clamp(10px, 1.7vh, 17px); }
-  .mezony .csapat .pont { font-size: clamp(11px, 1.8vh, 18px); }
+  .mezony .csapat {
+    padding: 0.8vh 0.9vw;
+    box-shadow: 3px 3px 0 var(--shadow);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.8vw;
+    border-left: 8px solid var(--team, var(--line-lit));
+  }
+
+  .mezony .csapat .nev {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(10px, 1.8vh, 18px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mezony .csapat .pont {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(11px, 1.8vh, 18px);
+    color: var(--amber);
+  }
+
+  .mezony .csapat .alcim { display: none; }
 
   .sorszam {
     font-family: var(--font-display);
     font-weight: 700;
     color: var(--muted);
-    font-size: clamp(10px, 1.6vh, 16px);
-    margin-right: 0.6vw;
+    font-size: clamp(10px, 1.7vh, 17px);
   }
 
   /* ---------- kategóriák ---------- */
@@ -241,23 +260,23 @@ const TAKART = '████████';
 const felfedve = new Set();
 let adat = null;
 
-function csapatKartya(t, extra = '') {
+function csapatKartya(t, { sorszam = null } = {}) {
   const nyitva = felfedve.has(t.team_id);
-  const kartya = el('div', {
-    class: `csapat ${nyitva ? 'felfedve' : 'rejtve'} ${extra}`,
+  const gyerekek = [
+    el('div', { class: 'nev' }, nyitva ? t.label : TAKART),
+    el('div', { class: 'pont' }, t.total_pct === null ? '-' : String(t.total_pct)),
+  ];
+  if (sorszam !== null) gyerekek.unshift(el('span', { class: 'sorszam' }, `${sorszam}.`));
+
+  return el('div', {
+    class: `csapat ${nyitva ? 'felfedve' : 'rejtve'}`,
     style: { '--team': nyitva ? t.accent_color : 'transparent' },
+    title: nyitva ? '' : 'Kattints a felfedéshez',
     onclick: () => {
       felfedve.has(t.team_id) ? felfedve.delete(t.team_id) : felfedve.add(t.team_id);
       rajzol();
     },
-  },
-    el('div', {},
-      el('div', { class: 'nev' }, nyitva ? t.label : TAKART),
-      el('div', { class: 'alcim' }, `${t.number}. csapat · ${t.voters} szavazó`)
-    ),
-    el('div', { class: 'pont' }, t.total_pct === null ? '-' : String(t.total_pct))
-  );
-  return kartya;
+  }, ...gyerekek);
 }
 
 function oszlop(hely, cimke, csapatok) {
@@ -285,6 +304,7 @@ function rajzol() {
     oszlop(3, 'Harmadik hely', helyek.get(3) || [])
   );
 
+  // A dobogó alatt a maradék mezőny, helyezéssel.
   const tobbi = [];
   for (const [hely, lista] of [...helyek].sort((a, b) => a[0] - b[0])) {
     if (hely <= 3) continue;
@@ -293,12 +313,7 @@ function rajzol() {
   for (const t of adat.ranking.filter((x) => x.rank === null)) tobbi.push([null, t]);
 
   $('mezony').replaceChildren(
-    ...tobbi.map(([hely, t]) => {
-      const k = csapatKartya(t);
-      k.prepend(el('span', { class: 'sorszam' }, hely ? `${hely}.` : '-'));
-      k.style.gridTemplateColumns = 'auto 1fr auto';
-      return k;
-    })
+    ...tobbi.map(([hely, t]) => csapatKartya(t, { sorszam: hely }))
   );
 }
 

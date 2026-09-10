@@ -251,7 +251,8 @@ check('a frissítés jelszó nélkül tiltott',
 console.log('\n--- PDF ---');
 const vPdf = await admin.fetch('/api/admin/print/voters.pdf?cols=4', { binary: true });
 check('szavazói PDF', vPdf.status === 200 && vPdf.body.subarray(0, 5).toString() === '%PDF-');
-check('szavazói PDF egy lap 13 cetlihez', pdfPages(vPdf.body) === 1, `${pdfPages(vPdf.body)} oldal`);
+const cetliDb = (await admin.fetch('/api/admin/voters')).body.voters.length;
+check('szavazói PDF oldalszáma (16 / A4)', pdfPages(vPdf.body) === Math.ceil(cetliDb / 16), `${pdfPages(vPdf.body)} oldal / ${cetliDb} cetli`);
 const tPdf = await admin.fetch('/api/admin/print/teams.pdf', { binary: true });
 check('csapat PDF', tPdf.status === 200 && tPdf.body.subarray(0, 5).toString() === '%PDF-');
 const aktivCsapat = (await admin.fetch('/api/admin/overview')).body.counts.teams;

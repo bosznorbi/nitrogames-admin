@@ -240,6 +240,28 @@ label.field > span, .toast, .big-check, .tile-art, .hero-sub {
 .back:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--shadow); }
 .back svg { width: 18px; height: 18px; display: block; }
 
+/* Kis, másodlagos gomb. Több oldal használja, ezért itt van, nem az adminban. */
+.mini {
+  appearance: none;
+  font-family: var(--font-display);
+  font-size: 10px;
+  text-transform: uppercase;
+  padding: 8px 11px;
+  border: 3px solid var(--line-lit);
+  background: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-block;
+  box-shadow: 3px 3px 0 var(--shadow);
+}
+
+.mini:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--shadow); }
+.mini:hover { border-color: var(--cyan); }
+.mini.danger { color: var(--danger); border-color: var(--danger); }
+
+
 /* ---------- űrlapok ---------- */
 
 label.field { display: block; margin-bottom: 16px; }
