@@ -110,11 +110,13 @@
     <div class="card">
       <h2 style="margin-top:0; color:var(--danger)">Nullázás</h2>
       <p class="small muted" style="margin-top:0">
-        Tesztelés után ezzel tisztítasz. A szempontok mindkét esetben megmaradnak.
+        Tesztelés után ezzel tisztítasz. A csapatkódok, a szavazólapok QR-kódjai
+        és a szavazói cetlik <strong>mindkét esetben érvényben maradnak</strong>,
+        tehát az előre kinyomtatott lapok jók lesznek utána is.
       </p>
       <div class="row tight">
-        <button class="mini danger" id="resetVotes">Csak a szavazatok törlése</button>
-        <button class="mini danger" id="resetAll">MINDEN törlése</button>
+        <button class="mini danger" id="resetVotes">Csak a szavazatok</button>
+        <button class="mini danger" id="resetAll">Szavazatok és a csapatok tartalma</button>
       </div>
     </div>
   </section>
@@ -132,6 +134,7 @@
       </div>
       <p class="small muted" style="margin-bottom:0">
         A csapatok maguk adnak nevet maguknak és a játéknak, az API-n keresztül.
+        A kódok véglegesek: egyszer generálódnak, és a nullázás sem írja felül őket.
       </p>
     </div>
 

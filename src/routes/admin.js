@@ -3,10 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { config, baseUrl } from '../config.js';
 import {
-  allSettings, createTeam, createVoters, db, ensureTestVoter, getBool, setSetting, teamLabel, TEST_CODE,
+  allSettings, createTeam, createVoters, db, getBool, setSetting, teamLabel, TEST_CODE,
 } from '../db.js';
 import { ADMIN_COOKIE, adminCookieOpts, rateLimit, requireAdmin, signAdminSession } from '../middleware/auth.js';
-import { formatCode, safeEqual, slugify, teamCode } from '../lib/ids.js';
+import { formatCode, safeEqual, slugify } from '../lib/ids.js';
 import { qrPngBuffer, qrSvg } from '../lib/qr.js';
 import { teamSheetPdf, votersPdf } from '../lib/pdf.js';
 
@@ -130,14 +130,6 @@ adminRouter.post('/teams', (req, res) => {
 
   const team = createTeam();
   res.json({ ok: true, team: teamRow(team, base) });
-});
-
-adminRouter.post('/teams/:id/new-code', (req, res) => {
-  const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(req.params.id);
-  if (!team) return res.status(404).json({ error: 'not_found' });
-  const code = teamCode();
-  db.prepare("UPDATE teams SET api_code = ?, updated_at = datetime('now') WHERE id = ?").run(code, team.id);
-  res.json({ ok: true, code: formatCode(code) });
 });
 
 adminRouter.patch('/teams/:id', (req, res) => {
@@ -365,36 +357,36 @@ adminRouter.post('/reset', (req, res) => {
     return res.status(400).json({ error: 'confirm_required', message: 'A törléshez küldd a { "confirm": "TOROL" } mezőt.' });
   }
   const scope = body.scope === 'all' ? 'all' : 'votes';
-  const before = {
-    votes: db.prepare('SELECT COUNT(*) AS c FROM votes').get().c,
-    teams: db.prepare('SELECT COUNT(*) AS c FROM teams').get().c,
-    voters: db.prepare('SELECT COUNT(*) AS c FROM voters').get().c,
-  };
+  const votes = db.prepare('SELECT COUNT(*) AS c FROM votes').get().c;
 
   db.transaction(() => {
     db.prepare('DELETE FROM votes').run();
     db.prepare('DELETE FROM submissions').run();
+
     if (scope === 'all') {
+      // A csapatok es a szavazok azonositoja megmarad: a kodjaik es a
+      // QR-jeik elore ki vannak nyomtatva, azokat nem szabad eldobni.
+      // Csak a csapatok altal feltoltott tartalom nullazodik.
       for (const t of db.prepare('SELECT background_file, icon_file, icon_done_file FROM teams').all()) {
         for (const f of [t.background_file, t.icon_file, t.icon_done_file]) {
           if (f) fs.rm(path.join(config.uploadDir, f), { force: true }, () => {});
         }
       }
-      db.prepare('DELETE FROM teams').run();
-      db.prepare('DELETE FROM voters').run();
-      db.prepare("DELETE FROM sqlite_sequence WHERE name IN ('teams', 'voters')").run();
+      db.prepare(`UPDATE teams SET
+        name = NULL, game_name = NULL, tagline = NULL, description = NULL,
+        background_file = NULL, icon_file = NULL, icon_done_file = NULL,
+        qr_fetched_at = NULL, updated_at = datetime('now')`).run();
+      db.prepare('UPDATE voters SET is_activated = 0, last_seen_at = NULL').run();
     }
   })();
-
-  if (scope === 'all') ensureTestVoter();
 
   res.json({
     ok: true,
     scope,
-    deleted: scope === 'all' ? before : { votes: before.votes },
     message: scope === 'all'
-      ? 'Minden törölve: szavazatok, csapatok, szavazók. A teszt kód megmaradt.'
-      : `${before.votes} szavazat törölve. A csapatok és szavazók megmaradtak.`,
+      ? `Nullázva: ${votes} szavazat és a csapatok által feltöltött tartalom. `
+        + 'A csapatkódok, a QR-kódok és a szavazói cetlik érvényesek maradtak.'
+      : `${votes} szavazat törölve.`,
   });
 });
 

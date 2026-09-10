@@ -106,9 +106,13 @@ $('saveTexts').addEventListener('click', async () => {
   loadOverview();
 });
 
-$('resetVotes').addEventListener('click', () => reset('votes', 'Törlöd az összes szavazatot? A csapatok és a szavazók megmaradnak.'));
+$('resetVotes').addEventListener('click', () => reset('votes', 'Törlöd az összes szavazatot?'));
 $('resetAll').addEventListener('click', () =>
-  reset('all', 'MINDENT törölsz: szavazatok, csapatok (a feltöltött képeikkel), szavazók. Csak a szempontok és a teszt kód marad. Biztos?'));
+  reset('all', [
+    'Nullázod a szavazatokat ÉS a csapatok által feltöltött tartalmat (nevek, leírások, képek)?',
+    '',
+    'A csapatkódok, a QR-kódok és a szavazói cetlik érvényesek maradnak, tehát a kinyomtatott lapok jók lesznek.',
+  ].join('\n')));
 
 async function reset(scope, question) {
   if (!confirm(question)) return;
@@ -138,14 +142,12 @@ async function loadTeams() {
       el('tr', {},
         el('td', { class: 'num', 'data-label': 'Sorszám' }, String(t.number)),
         el('td', { 'data-label': 'Csempe' }, el('span', {
-          class: 'thumb-sm',
-          style: {
-            width: '34px',
-            height: '34px',
-            backgroundSize: 'contain',
-            ...(t.icon_url ? { backgroundImage: `url("${t.icon_url}")` } : {}),
-          },
-        })),
+          class: 'thumb-sm tile-cell',
+          title: t.icon_url ? 'Feltöltött csempekép' : 'Még nincs csempekép',
+          style: t.icon_url
+            ? { backgroundImage: `url("${t.icon_url}")` }
+            : { background: t.accent_color || '#7c5cff', color: '#fff' },
+        }, t.icon_url ? '' : String(t.number))),
         el('td', { 'data-label': 'Csapat / játék' },
           el('span', { class: 'swatch', style: { background: t.accent_color || '#7c5cff' } }),
           el('strong', {}, t.label),
@@ -162,21 +164,12 @@ async function loadTeams() {
         el('td', { 'data-label': 'Műveletek' },
           el('div', { class: 'row tight' },
             el('a', { class: 'mini', href: t.vote_url, target: '_blank', rel: 'noopener' }, 'Szavazólap'),
-            el('button', { class: 'mini', onclick: () => newCode(t) }, 'Új kód'),
             el('button', { class: 'mini danger', onclick: () => removeTeam(t) }, 'Törlés')
           )
         )
       )
     )
   );
-}
-
-async function newCode(t) {
-  if (!confirm(`Új kód a(z) ${t.number}. csapatnak? A régi azonnal érvénytelen lesz, és újra kell nyomtatni a lapját.`)) return;
-  const r = await api(`/api/admin/teams/${t.id}/new-code`, { method: 'POST' });
-  await copy(r.code);
-  toast(`Új kód: ${r.code} (vágólapon)`);
-  loadTeams();
 }
 
 async function removeTeam(t) {

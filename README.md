@@ -43,7 +43,9 @@ Az app a <http://localhost:3000> címen indul. Az `.env` fájlban legalább az
 Első lépések az admin felületen (<http://localhost:3000/admin>):
 
 1. **Csapatok** fül: állítsd be a csapatok számát. Minden csapat kap egy
-   nyolc karakteres kódot, ez kerül a nyomtatott lapjukra.
+   nyolc karakteres kódot, ez kerül a nyomtatott lapjukra. A kód és a
+   szavazólap QR-je végleges: egyszer generálódik, és a nullázás sem
+   írja felül, tehát előre ki lehet nyomtatni mindent.
 2. **Szempontok** fül: nézd át az öt alapértelmezett szempontot.
 3. **Szavazók** fül: generálj annyi cetlit, ahányan lesztek, plusz tartalékot.
 4. **Áttekintés** fül: töltsd le a két PDF-et, és nyomtasd ki.
@@ -155,6 +157,11 @@ curl https://<a-te-domained>/healthz
 ```
 
 ## Az esemény menete
+
+> **A nullázás nem érinti a kinyomtatott lapokat.** Sem a csapatkódok, sem a
+> szavazólapok QR-kódjai, sem a szavazói cetlik nem változnak tőle. Csak a
+> szavazatok, és teljes nullázásnál a csapatok által feltöltött tartalom
+> (nevek, leírások, képek) törlődik.
 
 **Előtte**
 

@@ -99,7 +99,13 @@ check('admin oldal jelszó nélkül átirányít', (await new Session().fetch('/
 check('admin api jelszó nélkül 401', (await new Session().fetch('/api/admin/overview')).status === 401);
 
 console.log('\n--- alapallapot ---');
-await admin.fetch('/api/admin/reset', { json: { confirm: 'TOROL', scope: 'all' } });
+// Ismert allapotbol indulunk: minden csapatot es nem-teszt szavazot torlunk.
+for (const t of (await admin.fetch('/api/admin/teams')).body.teams) {
+  await admin.fetch(`/api/admin/teams/${t.id}`, { method: 'DELETE' });
+}
+for (const v of (await admin.fetch('/api/admin/voters')).body.voters) {
+  if (!v.is_test) await admin.fetch(`/api/admin/voters/${v.id}`, { method: 'DELETE' });
+}
 await admin.fetch('/api/admin/teams', { json: { count: 9 } });
 await admin.fetch('/api/admin/voters', { json: { count: 12 } });
 await admin.fetch('/api/admin/settings', { method: 'PUT', json: { voting_open: true } });
@@ -209,6 +215,22 @@ check('zárt szavazásnál 423',
   (await teszt.fetch(`/api/teams/${votePublicId}/vote`, { method: 'POST', json: { scores } })).status === 423);
 await admin.fetch('/api/admin/settings', { method: 'PUT', json: { voting_open: true } });
 
+console.log('\n--- nullazas nem torli a kinyomtatott kodokat ---');
+const elotte = (await admin.fetch('/api/admin/teams')).body.teams.map((t) => `${t.number}:${t.code}:${t.public_id}`);
+const voterElotte = (await admin.fetch('/api/admin/voters')).body.voters.map((v) => v.code).sort();
+
+await admin.fetch('/api/admin/reset', { json: { confirm: 'TOROL', scope: 'all' } });
+
+const utana = (await admin.fetch('/api/admin/teams')).body.teams;
+check('a csapatkódok és QR azonosítók változatlanok',
+  JSON.stringify(utana.map((t) => `${t.number}:${t.code}:${t.public_id}`)) === JSON.stringify(elotte));
+check('a szavazói cetlik megmaradtak',
+  JSON.stringify((await admin.fetch('/api/admin/voters')).body.voters.map((v) => v.code).sort()) === JSON.stringify(voterElotte));
+check('a csapatok feltöltött tartalma viszont törlődött', utana.every((t) => t.name === null && !t.icon_url));
+check('a szavazatok is törlődtek', (await admin.fetch('/api/admin/results')).body.stats.votes === 0);
+check('az új kód végpont megszűnt',
+  (await admin.fetch(`/api/admin/teams/${utana[0].id}/new-code`, { method: 'POST' })).status === 404);
+
 console.log('\n--- PDF ---');
 const vPdf = await admin.fetch('/api/admin/print/voters.pdf?cols=4', { binary: true });
 check('szavazói PDF', vPdf.status === 200 && vPdf.body.subarray(0, 5).toString() === '%PDF-');
@@ -222,7 +244,7 @@ check('CSV export megszűnt', (await admin.fetch('/api/admin/export/votes.csv'))
 console.log('\n--- eredmenyek ---');
 const results = await admin.fetch('/api/admin/results');
 check('eredmények számolódnak', results.body.ranking.length === 9);
-check('a szavazott csapat vezet', results.body.ranking[0].total_pct === 100, String(results.body.ranking[0].total_pct));
+check('nullázás után nincs pontszám', results.body.ranking.every((t) => t.total_pct === null));
 
 console.log('\n--- oldalak ---');
 for (const [path, expect] of [
