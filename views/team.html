@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0a0b10">
+<meta name="robots" content="noindex">
+<title>Csapat konzol</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/admin.css">
+<style>
+  .team-wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 60px; }
+  pre.code {
+    background: rgba(0, 0, 0, 0.42);
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    padding: 14px 15px;
+    overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    margin: 0 0 12px;
+    white-space: pre;
+  }
+  .ep { display: grid; grid-template-columns: 74px 1fr; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .ep:last-child { border-bottom: none; }
+  .ep b { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: var(--ok); }
+  .ep code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; }
+  .ep span { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .preview { display: grid; grid-template-columns: 132px 1fr; gap: 18px; align-items: start; }
+  .preview .phone {
+    width: 132px; aspect-ratio: 9 / 16; border-radius: 14px; border: 1px solid var(--line-strong);
+    background: #fff center / cover no-repeat; display: grid; place-items: center;
+    color: #8b93a5; font-size: 12px; text-align: center; padding: 10px;
+  }
+  @media (max-width: 640px) { .preview { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="team-wrap">
+  <div class="admin-top">
+    <span class="brand"><span class="dot"></span><span>Csapat konzol</span></span>
+    <button class="mini" id="forget" hidden>Kulcs elfelejtése</button>
+  </div>
+
+  <section id="login">
+    <h1>Csapat API kulcs</h1>
+    <p class="lead">
+      A szervezőktől kaptatok egy <code>ng_…</code> kezdetű kulcsot. Írd be ide, és
+      látod a saját játékotok beállításait, a QR-kódotokat, és az API leírását.
+      A böngésző megjegyzi.
+    </p>
+    <div class="card">
+      <label class="field">
+        <span>API kulcs</span>
+        <input type="text" id="key" placeholder="ng_..." spellcheck="false" autocomplete="off">
+      </label>
+      <button class="btn block" id="connect">Csatlakozás</button>
+    </div>
+  </section>
+
+  <section id="console" hidden></section>
+</div>
+
+<script type="module" src="/static/js/team.js"></script>
+</body>
+</html>
