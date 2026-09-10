@@ -20,7 +20,7 @@
     <span class="brand"><img src="/static/img/logo-mark-white.svg" alt="Nitrowise" width="26" height="24"><span>Nitrogames admin</span></span>
     <div class="row tight">
       <a class="mini" href="/admin/qr-kodok" target="_blank" rel="noopener">QR-kódok</a>
-      <a class="mini" href="/admin/eredmeny" target="_blank" rel="noopener">Kivetítő</a>
+      <a class="mini" href="/admin/eredmeny" target="_blank" rel="noopener">Eredményhirdetés</a>
       <button class="mini" id="logout">Kilépés</button>
     </div>
   </div>
@@ -39,8 +39,8 @@
   <div class="tabs" role="tablist">
     <button class="tab on" data-panel="attekintes" role="tab">Áttekintés</button>
     <button class="tab" data-panel="csapatok" role="tab">Csapatok</button>
-    <button class="tab" data-panel="szempontok" role="tab">Szempontok</button>
     <button class="tab" data-panel="szavazok" role="tab">Szavazók</button>
+    <button class="tab" data-panel="szempontok" role="tab">Szempontok</button>
     <button class="tab" data-panel="eredmenyek" role="tab">Eredmények</button>
   </div>
 
@@ -49,24 +49,15 @@
     <div class="stats" id="stats"></div>
 
     <div class="card">
-      <h2 style="margin-top:0">Nyomtatás</h2>
+      <h2 style="margin-top:0">Nyomtatnivalók</h2>
       <p class="small muted" style="margin-top:0">
-        A szavazói ívet vágd fel, mindenki kap egy cetlit. A csapatívvel a csapatok
-        csatlakoznak a saját játékukhoz: rajta a kódjuk, a szerver címe és egy QR,
-        amit telefonról átküldhetnek maguknak.
+        Mindkettő új lapon nyílik meg. Gépről onnan nyomtatod vagy mented,
+        telefonról a megosztás gombbal küldöd tovább.
       </p>
-      <div class="row tight" style="margin-bottom:10px">
-        <a class="btn" href="/api/admin/print/voters.pdf?cols=4">Szavazói belépők (PDF)</a>
-        <a class="btn" href="/api/admin/print/teams.pdf">Csapat belépők (PDF)</a>
-      </div>
       <div class="row tight">
-        <a class="mini" href="/api/admin/print/voters.pdf?cols=4&nezet=inline" target="_blank" rel="noopener">Szavazói ív megnyitása (megosztáshoz)</a>
-        <a class="mini" href="/api/admin/print/teams.pdf?nezet=inline" target="_blank" rel="noopener">Csapatív megnyitása (megosztáshoz)</a>
+        <a class="btn" href="/api/admin/print/voters.pdf?cols=4&nezet=inline" target="_blank" rel="noopener">Szavazói belépők</a>
+        <a class="btn" href="/api/admin/print/teams.pdf?nezet=inline" target="_blank" rel="noopener">Csapat belépők</a>
       </div>
-      <p class="small muted" style="margin-bottom:0">
-        Telefonon a „megnyitás” gombokkal a PDF a böngészőben nyílik meg, onnan a
-        megosztás gombbal továbbküldhető Teamsen.
-      </p>
     </div>
 
     <div class="card">
@@ -93,32 +84,6 @@
     </div>
 
     <div class="card">
-      <h2 style="margin-top:0">Teszt belépő</h2>
-      <p class="small muted" style="margin-top:0">
-        Ez a kód mindig létezik, mintha ki lenne nyomtatva. A belépő oldalon
-        beírva bármikor szavazóként tudsz tesztelni.
-      </p>
-      <div class="row tight">
-        <code class="key" id="testCode" style="font-size:18px;padding:8px 14px">TESZT</code>
-        <a class="mini" href="/belepes" target="_blank" rel="noopener">Belépő oldal</a>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2 style="margin-top:0">Szövegek</h2>
-      <label class="field">
-        <span>Esemény neve</span>
-        <input type="text" id="eventName" maxlength="60">
-      </label>
-      <label class="field">
-        <span>Felirat a főoldalon, amíg a szavazás tart</span>
-        <input type="text" id="readyText" maxlength="80">
-      </label>
-      <div id="switches" style="margin-bottom:16px"></div>
-      <button class="btn" id="saveTexts">Mentés</button>
-    </div>
-
-    <div class="card">
       <h2 style="margin-top:0; color:var(--danger)">Nullázás</h2>
       <p class="small muted" style="margin-top:0">
         Tesztelés után ezzel tisztítasz. A csapatkódok, a szavazólapok QR-kódjai
@@ -141,7 +106,7 @@
           <input type="number" id="teamCount" min="0" max="100" step="1">
         </label>
         <button class="btn" id="setTeamCount" style="margin-top:18px">Beállít</button>
-        <button class="btn ghost" id="addTeam" style="margin-top:18px">+ Egy csapat</button>
+        <a class="btn ghost" href="/api/admin/print/teams.pdf?nezet=inline" target="_blank" rel="noopener" style="margin-top:18px">Csapat belépők (PDF)</a>
       </div>
       <p class="small muted" style="margin-bottom:0">
         A csapatok maguk adnak nevet maguknak és a játéknak, az API-n keresztül.
@@ -172,7 +137,7 @@
           <span>Min</span><input type="number" id="cMin" value="1">
         </label>
         <label class="field" style="margin:0;width:84px">
-          <span>Max</span><input type="number" id="cMax" value="5">
+          <span>Max</span><input type="number" id="cMax" value="4">
         </label>
         <label class="field" style="margin:0;width:92px">
           <span>Súly</span><input type="number" id="cWeight" value="1" step="0.5">
@@ -204,12 +169,16 @@
     <div class="card" style="margin-bottom:16px">
       <div class="row">
         <label class="field" style="margin:0;max-width:200px;flex:1">
-          <span>Hány új szavazó?</span>
-          <input type="number" id="voterCount" min="1" max="500" value="60">
+          <span>Hány szavazó?</span>
+          <input type="number" id="voterCount" min="0" max="500" value="60">
         </label>
-        <button class="btn" id="addVoters" style="margin-top:18px">Generálás</button>
-        <a class="btn ghost" href="/api/admin/print/voters.pdf?cols=4" style="margin-top:18px">PDF</a>
+        <button class="btn" id="addVoters" style="margin-top:18px">Beállít</button>
+        <a class="btn ghost" href="/api/admin/print/voters.pdf?cols=4&nezet=inline" target="_blank" rel="noopener" style="margin-top:18px">Szavazói belépők (PDF)</a>
       </div>
+      <p class="small muted" style="margin-bottom:0">
+        Pontosan ennyi cetli lesz. Ha kevesebb van, generálunk hozzá; ha több,
+        a legutóbb létrehozottakat eldobjuk. A TESZT kód ezen kívül mindig megmarad.
+      </p>
     </div>
 
     <div class="scroll-x">
@@ -225,9 +194,7 @@
   <!-- ---------- Eredmények ---------- -->
   <section class="panel" id="panel-eredmenyek" hidden>
     <div class="stats" id="resultStats"></div>
-    <label class="switch" style="margin-bottom:18px">
-      <input type="checkbox" id="autoRefresh" checked><i></i><span>Automatikus frissítés</span>
-    </label>
+    <p class="small muted" style="margin:-8px 0 18px">Az eredmények 5 másodpercenként frissülnek.</p>
 
     <h2>Összesített sorrend</h2>
     <div class="rank-list" id="ranking"></div>

@@ -13,39 +13,47 @@
 </head>
 <body>
 
-<header class="topbar">
-  <span class="brand"><img src="/static/img/logo-mark-white.svg" alt="Nitrowise" width="26" height="24"><span id="eventName">Nitrogames</span></span>
+<header class="topbar compact">
+  <span class="brand"><img src="/static/img/logo-mark-white.svg" alt="Nitrowise" width="24" height="22"><span id="eventName">Nitrogames</span></span>
 </header>
 
-<main class="wrap">
-  <div id="banner"></div>
+<main class="wrap tight-top">
+  <div id="closed"></div>
 
   <div class="progress-ring">
     <b id="progressText">…</b>
     <span id="progressSub"></span>
   </div>
-  <div class="bar" style="margin-bottom:18px"><i id="progressBar"></i></div>
+  <div class="bar" style="margin-bottom:12px"><i id="progressBar"></i></div>
 
   <ul class="tiles" id="tiles">
     <li class="tile"></li><li class="tile"></li><li class="tile"></li>
     <li class="tile"></li><li class="tile"></li><li class="tile"></li>
   </ul>
 
-  <div class="spacer"></div>
-  <p class="small muted center" id="hint">
-    Egy játék pontozásához olvasd be a csapat asztalán lévő QR-kódot.
+  <p class="small muted center" id="hint" style="margin:12px 0 0">
+    Olvasd be a csapat asztalán lévő QR-kódot.
   </p>
 </main>
+
+<!-- Első belépéskor pár másodpercre megjelenik, aztán eltűnik. -->
+<div id="welcome" hidden>
+  <div class="welcome-box">
+    <div class="welcome-mark"><i class="tick"></i></div>
+    <strong>Sikeres belépés</strong>
+    <span>A telefonod megjegyzett, mehet a szavazás.</span>
+  </div>
+</div>
 
 <script type="module">
 import { api, el, toast } from '/static/js/app.js';
 
 const $ = (id) => document.getElementById(id);
-
-/** A frissen leadott szavazat csempéje, az URL-ből. */
 const params = new URLSearchParams(location.search);
+
 const justVoted = params.get('szavaztam');
-if (justVoted) history.replaceState(null, '', '/');
+const belepett = params.get('belepes') === '1';
+if (justVoted || belepett) history.replaceState(null, '', '/');
 
 function tileNode(t, celebrate) {
   const art = el('div', {
@@ -53,15 +61,28 @@ function tileNode(t, celebrate) {
     style: t.icon_url ? { backgroundImage: `url("${t.icon_url}")` } : {},
   }, t.icon_url ? '' : String(t.number));
 
-  return el('li', {
+  const tartalom = [art, el('div', { class: 'tile-name' }, t.label)];
+  const kozos = {
     class: `tile ${t.voted ? 'done' : ''} ${celebrate ? 'celebrate' : ''}`,
     style: { '--team': t.accent_color },
     dataset: { id: t.public_id },
-    title: t.label,
-  },
-    art,
-    el('div', { class: 'tile-name' }, t.label)
+  };
+
+  // Amire már szavazott, azt innen is módosíthatja. A többihez QR-kód kell.
+  return el('li', {},
+    t.voted
+      ? el('a', { ...kozos, href: `/t/${t.public_id}`, title: `${t.label}: pontszám módosítása` }, ...tartalom)
+      : el('div', { ...kozos, title: t.label }, ...tartalom)
   );
+}
+
+function welcome() {
+  const box = $('welcome');
+  box.hidden = false;
+  setTimeout(() => {
+    box.classList.add('tunik');
+    setTimeout(() => { box.hidden = true; }, 400);
+  }, 2200);
 }
 
 async function load() {
@@ -80,40 +101,33 @@ async function load() {
   $('eventName').textContent = data.event_name;
 
   const remaining = data.total - data.done;
-  $('progressText').textContent = data.total === 0
-    ? 'Még nincs csapat'
-    : `${data.done} / ${data.total}`;
-  $('progressSub').textContent = data.total === 0
-    ? ''
+  $('progressText').textContent = `${data.done} / ${data.total}`;
+  $('progressSub').textContent = !data.total
+    ? 'még nincs csapat'
     : remaining === 0
-      ? 'mindegyikre szavaztál'
-      : `még ${remaining} játék van hátra`;
+      ? 'mind megvan'
+      : `még ${remaining} játék`;
   $('progressBar').style.width = data.total ? `${Math.round((data.done / data.total) * 100)}%` : '0%';
 
-  $('banner').replaceChildren(
+  $('closed').replaceChildren(
     data.voting_open
-      ? el('div', { class: 'ready-banner' },
-          el('div', { class: 'mark' }, el('i', { class: 'tick' })),
-          el('div', {},
-            el('strong', {}, data.ready_text || 'Minden készen áll!'),
-            el('span', {}, 'Járd végig a játékokat, és olvasd be a QR-kódjukat.')
-          )
-        )
-      : el('div', { class: 'note warn', style: { marginBottom: '18px' } },
-          'A szavazás még nem indult el. Ez az oldal a tiéd, nyugodtan bezárhatod, a telefonod megjegyzett.')
+      ? ''
+      : el('div', { class: 'note warn', style: { marginBottom: '12px' } },
+          'A szavazás még nem indult el. Ez az oldal a tiéd, nyugodtan bezárhatod.')
   );
 
   $('tiles').replaceChildren(...data.teams.map((t) => tileNode(t, t.public_id === justVoted)));
-  $('hint').textContent = remaining === 0 && data.total > 0
+  $('hint').textContent = remaining === 0 && data.total
     ? 'Minden játékot pontoztál. Köszönjük!'
-    : 'Egy játék pontozásához olvasd be a csapat asztalán lévő QR-kódot.';
+    : 'Olvasd be a csapat asztalán lévő QR-kódot.';
 
   if (justVoted) {
     const node = document.querySelector(`.tile[data-id="${CSS.escape(justVoted)}"]`);
-    if (node) node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    if (node) node.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 }
 
+if (belepett) welcome();
 load().catch((err) => toast(err.message, true));
 </script>
 </body>

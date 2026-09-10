@@ -126,6 +126,20 @@ code.key {
 
 code.key:hover { border-color: var(--cyan); }
 
+/* A szavazó kódja a neve: keret nélkül, csak nagy és olvasható. */
+.voter-code {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  font-size: 17px;
+  color: var(--amber);
+  cursor: pointer;
+}
+
+.voter-code:hover { color: var(--cyan); }
+
+td.jobbra { text-align: right; }
+
 .mini {
   appearance: none;
   font-family: var(--font-display);

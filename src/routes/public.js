@@ -1,6 +1,6 @@
 import express from 'express';
 import { config, baseUrl } from '../config.js';
-import { db, getBool, getSetting, teamLabel } from '../db.js';
+import { RULES, db, getBool, teamLabel } from '../db.js';
 import { VOTER_COOKIE, requireVoter, rateLimit, voterCookieOpts } from '../middleware/auth.js';
 import { normalizeCode } from '../lib/ids.js';
 
@@ -26,10 +26,9 @@ function tile(t, voted) {
 
 publicRouter.get('/config', (req, res) => {
   res.json({
-    event_name: getSetting('event_name') || config.eventName,
-    ready_text: getSetting('ready_text'),
+    event_name: config.eventName,
     voting_open: getBool('voting_open'),
-    allow_comments: getBool('allow_comments'),
+    allow_comments: RULES.allowComments,
     authenticated: Boolean(req.voter),
     criteria: activeCriteria().map((c) => ({
       key: c.key,
@@ -64,8 +63,7 @@ publicRouter.get('/home', requireVoter, (req, res) => {
   );
   const tiles = teams.map((t) => tile(t, voted.has(t.id)));
   res.json({
-    event_name: getSetting('event_name') || config.eventName,
-    ready_text: getSetting('ready_text'),
+    event_name: config.eventName,
     voting_open: getBool('voting_open'),
     done: tiles.filter((t) => t.voted).length,
     total: tiles.length,
@@ -106,7 +104,7 @@ publicRouter.get('/teams/:publicId', (req, res) => {
       background_url: team.background_file ? `/uploads/${team.background_file}` : null,
     },
     voting_open: getBool('voting_open'),
-    allow_comments: getBool('allow_comments'),
+    allow_comments: RULES.allowComments,
     authenticated: Boolean(req.voter),
     criteria: activeCriteria().map((c) => ({
       key: c.key,
@@ -142,7 +140,7 @@ publicRouter.post(
     for (const c of criteria) {
       const raw = scores[c.key];
       if (raw === undefined || raw === null || raw === '') {
-        if (getBool('require_all_criteria')) {
+        if (RULES.requireAllCriteria) {
           return res.status(400).json({
             error: 'incomplete',
             message: `Minden szempontot pontozz, hiányzik: ${c.label}`,
@@ -165,7 +163,7 @@ publicRouter.post(
       return res.status(400).json({ error: 'missing_scores', message: 'Nincs egyetlen pontszám sem.' });
     }
 
-    const comment = getBool('allow_comments')
+    const comment = RULES.allowComments
       ? String((req.body && req.body.comment) || '').trim().slice(0, 500) || null
       : null;
 

@@ -71,7 +71,7 @@ Törölni nem lehet, a teljes nullázást is túléli.
 | `PUBLIC_BASE_URL` | A QR-kódokba kerülő nyilvános cím. Localhoston hagyd üresen. |
 | `EVENT_NAME` | Fejlécben megjelenő név. |
 | `BG_WIDTH` / `BG_HEIGHT` | Kötelező háttérkép-méret, alapból 1080 x 1920. |
-| `ICON_WIDTH` / `ICON_HEIGHT` | Kötelező csempekép-méret, alapból 600 x 800. |
+| `ICON_WIDTH` / `ICON_HEIGHT` | Kötelező csempekép-méret, alapból 640 x 768. |
 | `MAX_UPLOAD_BYTES` | Feltöltési méretkorlát, alapból 4 MB. |
 
 ### Hasznos parancsok
@@ -254,7 +254,7 @@ nagybetű mindegy. Alternatívák: `X-Csapat-Kod` fejléc vagy `?kod=` paraméte
 | `GET` | `/api/csapat` | Minden adat és a készültség. |
 | `PUT` | `/api/csapat` | `csapatnev`, `jatek_neve`, `mottó`, `leiras`, `szin` |
 | `POST` | `/api/csapat/hatterkep` | Háttérkép, pontosan 1080 x 1920. |
-| `POST` | `/api/csapat/csempekep` | Csempekép, pontosan 600 x 800 (álló). |
+| `POST` | `/api/csapat/csempekep` | Csempekép, pontosan 640 x 768 (álló). |
 | `GET` | `/api/csapat/qr` | A saját QR-kódjuk. `format=png\|svg\|json` |
 
 A készültség végpont válasza megmondja a következő lépést is:
@@ -267,7 +267,7 @@ A készültség végpont válasza megmondja a következő lépést is:
   "uzenet": "Még 2 dolog hiányzik.",
   "kovetkezo_lepes": {
     "kulcs": "csempekep",
-    "teendo": "Töltsetek fel csempeképet, pontosan 600x800 képpont.",
+    "teendo": "Töltsetek fel csempeképet, pontosan 640x768 képpont.",
     "hogyan": "POST https://.../api/csapat/csempekep"
   },
   "hianyzik": [ ... ]

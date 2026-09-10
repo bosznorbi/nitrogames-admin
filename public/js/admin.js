@@ -25,11 +25,6 @@ function openTabFromHash() {
 
 /* ---------- attekintes ---------- */
 
-const SWITCHES = [
-  ['require_all_criteria', 'Minden szempont kötelező', 'A szavazat csak akkor küldhető be, ha minden szempont ki van töltve.'],
-  ['allow_comments', 'Szöveges megjegyzés', 'A szavazók írhatnak rövid visszajelzést a csapatnak.'],
-];
-
 const stat = (value, label) => el('div', { class: 'stat' }, el('b', {}, String(value)), el('span', {}, label));
 
 async function loadOverview() {
@@ -56,23 +51,6 @@ async function loadOverview() {
     : 'A főoldal látszik, de pontozni nem lehet.';
   $('votingBox').classList.toggle('live', open);
 
-  $('switches').replaceChildren(
-    ...SWITCHES.map(([key, label, hint]) =>
-      el('div', { class: 'switch-row' },
-        el('div', {}, el('strong', {}, label), el('p', {}, hint)),
-        el('label', { class: 'switch' },
-          el('input', {
-            type: 'checkbox',
-            checked: state.settings[key] === '1',
-            onchange: (e) => saveSetting(key, e.target.checked),
-          }),
-          el('i', {})
-        )
-      )
-    )
-  );
-
-  $('testCode').textContent = data.test_code;
   $('mainQr').src = `/api/admin/qr?format=png&size=600&data=${encodeURIComponent(state.baseUrl)}`;
   $('mainUrl').textContent = state.baseUrl;
   $('mainUrl').href = state.baseUrl;
@@ -86,9 +64,8 @@ async function loadOverview() {
       ? 'Nem találtam hálózati címet, ezért localhost került ide. Telefonról ez nem érhető el.'
       : 'Ez a gép hálózati címe. Minden QR-kód erre mutat, tehát telefonról is működik.';
 
-  $('eventName').value = state.settings.event_name || '';
-  $('readyText').value = state.settings.ready_text || '';
   $('teamCount').value = c.teams_total;
+  $('voterCount').value = c.voters - 1; // a TESZT kód ezen kívül áll
 }
 
 async function saveSetting(key, value) {
@@ -103,12 +80,6 @@ async function saveSetting(key, value) {
 
 $('votingOpen').addEventListener('change', async (e) => {
   await saveSetting('voting_open', e.target.checked);
-  loadOverview();
-});
-
-$('saveTexts').addEventListener('click', async () => {
-  await saveSetting('event_name', $('eventName').value);
-  await saveSetting('ready_text', $('readyText').value);
   loadOverview();
 });
 
@@ -211,13 +182,6 @@ $('setTeamCount').addEventListener('click', async () => {
   } catch (err) {
     toast(err.message, true);
   }
-});
-
-$('addTeam').addEventListener('click', async () => {
-  await api('/api/admin/teams', { method: 'POST', body: {} });
-  toast('Csapat hozzáadva');
-  loadTeams();
-  loadOverview();
 });
 
 /* ---------- szempontok ---------- */
@@ -327,18 +291,19 @@ $('addCriterion').addEventListener('click', async () => {
 
 async function loadVoters() {
   const { voters } = await api('/api/admin/voters');
+  state.voterCount = voters.filter((v) => !v.is_test).length;
   $('votersTable').querySelector('tbody').replaceChildren(
     ...voters.map((v) =>
       el('tr', {},
         el('td', { 'data-label': 'Kód' },
-          el('code', { class: 'key', onclick: () => copy(v.login_url), title: 'Belépő link másolása' }, v.code),
-          v.is_test ? el('span', { class: 'pill', style: { marginLeft: '8px' } }, 'teszt') : null
+          el('span', { class: 'voter-code', onclick: () => copy(v.login_url), title: 'Belépő link másolása' }, v.code),
+          v.is_test ? el('span', { class: 'pill', style: { marginLeft: '10px' } }, 'teszt') : null
         ),
         el('td', { 'data-label': 'Belépett' },
           v.activated ? el('span', { class: 'pill done' }, 'Igen') : el('span', { class: 'pill' }, 'Nem')),
         el('td', { class: 'num', 'data-label': 'Szavazott' }, String(v.voted_teams)),
         el('td', { class: 'muted small', 'data-label': 'Utoljára' }, since(v.last_seen_at) || '-'),
-        el('td', { 'data-label': '' },
+        el('td', { class: 'jobbra', 'data-label': '' },
           v.is_test ? null : el('button', { class: 'mini danger', onclick: () => removeVoter(v) }, 'Törlés'))
       )
     )
@@ -354,9 +319,12 @@ async function removeVoter(v) {
 }
 
 $('addVoters').addEventListener('click', async () => {
+  const cel = Number($('voterCount').value);
+  const most = state.voterCount ?? 0;
+  if (cel < most && !confirm(`${most - cel} szavazó cetli eldobása a szavazataikkal együtt. Biztos?`)) return;
   try {
-    const r = await api('/api/admin/voters', { method: 'POST', body: { count: Number($('voterCount').value) } });
-    toast(`${r.created} szavazó létrehozva`);
+    const r = await api('/api/admin/voters', { method: 'POST', body: { count: cel } });
+    toast(r.message);
     loadVoters();
     loadOverview();
   } catch (err) {
@@ -457,15 +425,11 @@ async function loadResults() {
   );
 }
 
-$('autoRefresh').addEventListener('change', setupRefresh);
-
 function setupRefresh() {
   clearInterval(refreshTimer);
-  if ($('autoRefresh').checked) {
-    refreshTimer = setInterval(() => {
-      if (!$('panel-eredmenyek').hidden) loadResults().catch(() => {});
-    }, 5000);
-  }
+  refreshTimer = setInterval(() => {
+    if (!$('panel-eredmenyek').hidden) loadResults().catch(() => {});
+  }, 5000);
 }
 
 /* ---------- segedek ---------- */

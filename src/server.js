@@ -77,7 +77,8 @@ app.get('/v/:token', (req, res) => {
 
   const next = String(req.query.next || '');
   const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/';
-  res.redirect(safeNext);
+  // A főoldal ebből tudja, hogy most lépett be, és mutatja a visszajelzést.
+  res.redirect(safeNext === '/' ? '/?belepes=1' : safeNext);
 });
 
 app.post('/api/session/logout', (_req, res) => {

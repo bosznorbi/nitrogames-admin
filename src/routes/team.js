@@ -340,7 +340,7 @@ teamRouter.use((req, res) => {
       'GET    /api/csapat/allapot      csak a készültség: mi hiányzik még',
       'PUT    /api/csapat              { csapatnev, jatek_neve, mottó, leiras, szin }',
       'POST   /api/csapat/hatterkep    kép, pontosan 1080x1920',
-      'POST   /api/csapat/csempekep    kép, pontosan 600x800 (álló)',
+      'POST   /api/csapat/csempekep    kép, pontosan 640x768 (álló)',
       'GET    /api/csapat/qr           saját QR kód, format=png|svg|json',
     ],
   });

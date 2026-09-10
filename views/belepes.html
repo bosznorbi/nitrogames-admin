@@ -77,7 +77,8 @@ $('codeForm').addEventListener('submit', async (e) => {
   btn.disabled = true;
   try {
     await api('/api/session/code', { method: 'POST', body: { code: $('code').value } });
-    location.replace(target);
+    // A főoldal ebből tudja, hogy most lépett be, és mutatja a visszajelzést.
+    location.replace(target === '/' ? '/?belepes=1' : target);
   } catch (err) {
     toast(err.message, true);
     btn.disabled = false;

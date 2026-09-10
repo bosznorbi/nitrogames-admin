@@ -13,7 +13,8 @@ import { detectLanIp, lanIp, localIps } from '../lib/lan.js';
 
 export const adminRouter = express.Router();
 
-const EDITABLE_SETTINGS = ['voting_open', 'require_all_criteria', 'allow_comments', 'event_name', 'ready_text'];
+// Egyetlen allithato beallitas maradt: nyitva van-e a szavazas.
+const EDITABLE_SETTINGS = ['voting_open'];
 
 /* ---------- session ---------- */
 
@@ -186,7 +187,7 @@ adminRouter.post('/criteria', (req, res) => {
   let key = slugify(body.key || label, 'szempont');
   if (db.prepare('SELECT 1 FROM criteria WHERE key = ?').get(key)) key = `${key}-${Date.now().toString(36).slice(-4)}`;
   const min = Number.isInteger(Number(body.min_score)) ? Number(body.min_score) : 1;
-  const max = Number.isInteger(Number(body.max_score)) ? Number(body.max_score) : 5;
+  const max = Number.isInteger(Number(body.max_score)) ? Number(body.max_score) : 4;
   if (max <= min || max - min > 100) {
     return res.status(400).json({ error: 'invalid_scale', message: 'A max pontszám legyen nagyobb a minimumnál.' });
   }
@@ -263,13 +264,43 @@ adminRouter.get('/voters', (req, res) => {
   });
 });
 
+/**
+ * A szavazok szamat pontosan erre az ertekre allitja: ha kevesebb van,
+ * generalunk, ha tobb, a legutobb letrehozottakat eldobjuk. A teszt kod
+ * ezen kivul all, azt nem szamoljuk es nem toroljuk.
+ */
 adminRouter.post('/voters', (req, res) => {
-  const count = Number((req.body && req.body.count) || 0);
-  if (!Number.isInteger(count) || count < 1 || count > 500) {
-    return res.status(400).json({ error: 'invalid_count', message: '1 és 500 közötti darabszámot adj meg.' });
+  const target = Number((req.body && req.body.count));
+  if (!Number.isInteger(target) || target < 0 || target > 500) {
+    return res.status(400).json({ error: 'invalid_count', message: '0 és 500 közötti darabszámot adj meg.' });
   }
-  const created = createVoters(count);
-  res.json({ ok: true, created: created.length });
+
+  const jelenlegi = db.prepare('SELECT COUNT(*) AS c FROM voters WHERE code <> ?').get(TEST_CODE).c;
+  let letrehozva = 0;
+  let torolve = 0;
+
+  if (target > jelenlegi) {
+    letrehozva = createVoters(target - jelenlegi).length;
+  } else if (target < jelenlegi) {
+    const dobando = db
+      .prepare('SELECT id FROM voters WHERE code <> ? ORDER BY id DESC LIMIT ?')
+      .all(TEST_CODE, jelenlegi - target);
+    const del = db.prepare('DELETE FROM voters WHERE id = ?');
+    db.transaction(() => dobando.forEach((v) => del.run(v.id)))();
+    torolve = dobando.length;
+  }
+
+  res.json({
+    ok: true,
+    osszesen: target,
+    letrehozva,
+    torolve,
+    message: letrehozva
+      ? `${letrehozva} új szavazó, összesen ${target}.`
+      : torolve
+        ? `${torolve} szavazó eldobva, összesen ${target}.`
+        : `Már pontosan ${target} szavazó van.`,
+  });
 });
 
 adminRouter.delete('/voters/:id', (req, res) => {
@@ -326,8 +357,29 @@ function computeResults() {
     };
   });
 
+  /*
+   * Sűrű helyezés: az azonos pontszámúak ugyanazt a helyet kapják, és a
+   * következő pontszám a rá következő helyet, nem ugrunk. Így két első
+   * után is van második és harmadik hely, ahogy egy ilyen bulin jó.
+   */
   const ranked = [...rows].sort((a, b) => (b.total_pct ?? -1) - (a.total_pct ?? -1));
-  ranked.forEach((r, i) => { r.rank = r.total_pct === null ? null : i + 1; });
+  let hely = 0;
+  let elozo = null;
+  for (const r of ranked) {
+    if (r.total_pct === null) {
+      r.rank = null;
+      continue;
+    }
+    if (r.total_pct !== elozo) {
+      hely += 1;
+      elozo = r.total_pct;
+    }
+    r.rank = hely;
+  }
+  // Hányan osztoznak ugyanazon a helyen.
+  for (const r of ranked) {
+    r.holtverseny = r.rank === null ? 0 : ranked.filter((x) => x.rank === r.rank).length;
+  }
 
   const categoryWinners = criteria.map((c) => {
     const best = [...rows]
@@ -440,7 +492,6 @@ adminRouter.get('/print/teams.pdf', async (req, res, next) => {
   try {
     const base = baseUrl(req);
     const teams = db.prepare('SELECT * FROM teams WHERE active = 1 ORDER BY number').all().map((t) => ({
-      number: t.number,
       code: formatCode(t.api_code),
       console_url: `${base}/csapat?kod=${formatCode(t.api_code)}`,
     }));

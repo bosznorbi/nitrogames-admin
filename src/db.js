@@ -135,16 +135,24 @@ for (const t of db.prepare('SELECT id, public_id, api_code FROM teams').all()) {
 
 /* ---------- settings ---------- */
 
+/*
+ * Egyetlen kapcsolo maradt az adminban: nyitva van-e a szavazas. A tobbi
+ * viselkedes be van egetve, mert nem kell rajta allitani:
+ *   - nem kotelezo minden szempontot kitolteni,
+ *   - a szoveges megjegyzes megengedett, de nem kotelezo,
+ *   - az esemeny neve a kornyezeti valtozobol jon.
+ */
 const DEFAULT_SETTINGS = {
   voting_open: '0',
-  require_all_criteria: '1',
-  allow_comments: '1',
-  event_name: config.eventName,
-  ready_text: 'Minden készen áll!',
 };
 
-// A nevvel valo belepes es a sajat csapat tiltasa kikerult: a kodok anonimak.
-db.prepare("DELETE FROM settings WHERE key IN ('allow_self_register', 'allow_self_vote', 'results_public', 'intro_text')").run();
+export const RULES = {
+  requireAllCriteria: false,
+  allowComments: true,
+};
+
+// A korabbi, mar nem hasznalt beallitasok kitakaritasa.
+db.prepare(`DELETE FROM settings WHERE key NOT IN ('voting_open')`).run();
 
 export function getSetting(key) {
   const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
@@ -182,7 +190,7 @@ export function seedCriteriaIfEmpty() {
   if (n > 0) return 0;
   const ins = db.prepare(
     `INSERT INTO criteria (key, label, description, min_score, max_score, weight, position, active)
-     VALUES (@key, @label, @description, 1, 5, 1, @position, 1)`
+     VALUES (@key, @label, @description, 1, 4, 1, @position, 1)`
   );
   db.transaction((rows) => rows.forEach((r) => ins.run(r)))(DEFAULT_CRITERIA);
   return DEFAULT_CRITERIA.length;
@@ -190,7 +198,24 @@ export function seedCriteriaIfEmpty() {
 
 /* ---------- csapatok ---------- */
 
-const ACCENTS = ['#7c5cff', '#00d4ff', '#ff5c8a', '#ffb020', '#2ee6a8', '#ff7847', '#5b8cff', '#c46bff', '#00c2a8', '#ff4d6d', '#8ee34a', '#ff9ec4'];
+/*
+ * Kilenc jol elkulonulo szin. Szandekosan tavol vannak egymastol a
+ * szinkoron: nincs ket egymashoz kozeli kek vagy ket kozeli zold.
+ */
+const ACCENTS = [
+  '#ff4d6d', // piros
+  '#ffb020', // narancs
+  '#ffe14d', // sárga
+  '#5ce65c', // zöld
+  '#00d4ff', // cián
+  '#4d7cff', // kék
+  '#a95cff', // lila
+  '#ff5cc8', // rózsaszín
+  '#00c2a8', // türkiz
+  '#ff7847', // korall
+  '#8ee34a', // limezöld
+  '#c9a227', // arany
+];
 
 export function createTeam({ number } = {}) {
   const n = number ?? (db.prepare('SELECT COALESCE(MAX(number), 0) AS m FROM teams').get().m + 1);
@@ -236,4 +261,12 @@ export function ensureTestVoter() {
 }
 
 seedCriteriaIfEmpty();
+
+// A skala 1-5-rol 1-4-re valtott. Az erintetlen alap szempontokat atallitjuk;
+// amit kezzel modositottak, azt nem bantjuk.
+db.prepare(
+  `UPDATE criteria SET max_score = 4
+   WHERE min_score = 1 AND max_score = 5 AND key IN (${DEFAULT_CRITERIA.map(() => '?').join(',')})`
+).run(...DEFAULT_CRITERIA.map((c) => c.key));
+
 ensureTestVoter();

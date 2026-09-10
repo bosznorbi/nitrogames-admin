@@ -5,91 +5,326 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#060a12">
 <meta name="robots" content="noindex">
-<title>Eredmények</title>
+<title>Eredményhirdetés</title>
 <link rel="icon" href="/static/img/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
-<link rel="manifest" href="/static/site.webmanifest">
 <link rel="stylesheet" href="/static/css/app.css">
-<link rel="stylesheet" href="/static/css/admin.css">
 <style>
-  .stage-wrap { max-width: 1100px; margin: 0 auto; padding: 26px 24px 60px; }
-  .stage-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; margin-bottom: 26px; }
-  .stage-head h1 { font-size: 40px; margin: 0; }
-  .board { display: grid; gap: 12px; }
-  .board .rank { grid-template-columns: 70px 1fr auto; padding: 18px 22px; }
-  .board .rank-pos { font-size: 34px; }
-  .board .rank:nth-child(1) .rank-pos { font-size: 42px; }
-  .board .rank-title { font-size: 23px; }
-  .board .rank-score b { font-size: 32px; }
-  .hidden-scores .rank-score b, .hidden-scores .rank-pos { filter: blur(13px); }
-  .winners .winner b { font-size: 17px; }
+  /* Diavetítésnek készült: 16:9-en, teljes képernyőn, görgetés nélkül. */
+  html, body { height: 100%; overflow: hidden; }
+
+  .szinpad {
+    height: 100dvh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 1.4vh;
+    padding: 2vh 2.4vw;
+  }
+
+  .fejlec { display: flex; align-items: center; justify-content: space-between; gap: 2vw; }
+  .fejlec .cim { display: flex; align-items: center; gap: 1.2vw; }
+  .fejlec img { height: 4.4vh; width: auto; display: block; }
+
+  .fejlec h1 {
+    margin: 0;
+    font-size: clamp(16px, 3vh, 34px);
+    letter-spacing: 0.08em;
+    color: var(--text);
+  }
+
+  .fejlec .sub { font-size: clamp(10px, 1.6vh, 15px); color: var(--muted); }
+
+  /* ---------- dobogó ---------- */
+
+  .dobogo {
+    display: grid;
+    grid-template-columns: 1fr 1.25fr 1fr;
+    align-items: end;
+    gap: 1.6vw;
+    min-height: 0;
+  }
+
+  .oszlop { display: flex; flex-direction: column; justify-content: flex-end; gap: 1vh; min-height: 0; }
+
+  .hely-cimke {
+    text-align: center;
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    font-size: clamp(10px, 1.7vh, 16px);
+    color: var(--muted);
+  }
+
+  .talp {
+    border: 3px solid var(--line-lit);
+    border-bottom: none;
+    background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    display: grid;
+    place-items: center;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(22px, 6vh, 64px);
+    color: var(--muted);
+  }
+
+  .oszlop.h1 .talp { height: 24vh; border-color: var(--amber); color: var(--amber); }
+  .oszlop.h2 .talp { height: 16vh; }
+  .oszlop.h3 .talp { height: 11vh; }
+
+  /* ---------- csapatkártya ---------- */
+
+  .csapat {
+    border: 3px solid var(--line);
+    background: var(--panel);
+    box-shadow: 4px 4px 0 var(--shadow);
+    padding: 1.1vh 1vw;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 1vw;
+    cursor: pointer;
+    border-left: 8px solid var(--team, var(--line-lit));
+  }
+
+  .csapat:hover { border-color: var(--cyan); border-left-color: var(--team, var(--cyan)); }
+
+  .csapat .nev {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(11px, 2.1vh, 22px);
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Takart állapot: fix hosszú blokk, hogy a névhossz se áruljon el semmit. */
+  .csapat.rejtve { cursor: pointer; }
+  .csapat.rejtve .nev { color: #35507a; letter-spacing: 0.05em; }
+  .csapat.rejtve .alcim { visibility: hidden; }
+
+  .csapat .alcim { font-size: clamp(9px, 1.4vh, 13px); color: var(--muted); }
+
+  .csapat .pont {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(13px, 2.4vh, 26px);
+    color: var(--amber);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .csapat.felfedve {
+    border-color: var(--team, var(--cyan));
+    background: color-mix(in srgb, var(--team, var(--cyan)) 12%, var(--panel));
+    animation: felfed 0.5s steps(5);
+  }
+
+  @keyframes felfed {
+    0% { transform: scale(0.9); filter: brightness(2.4); }
+    100% { transform: scale(1); filter: none; }
+  }
+
+  .oszlop.h1 .csapat .nev { font-size: clamp(13px, 2.7vh, 30px); }
+  .oszlop.h1 .csapat .pont { font-size: clamp(15px, 3vh, 32px); }
+
+  .megosztott {
+    text-align: center;
+    font-size: clamp(9px, 1.4vh, 13px);
+    color: var(--amber);
+    font-family: var(--font-display);
+    font-weight: 700;
+  }
+
+  /* ---------- a mezőny ---------- */
+
+  .mezony {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.9vh 1.2vw;
+    align-content: start;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .mezony .csapat { padding: 0.8vh 0.9vw; box-shadow: 3px 3px 0 var(--shadow); }
+  .mezony .csapat .nev { font-size: clamp(10px, 1.7vh, 17px); }
+  .mezony .csapat .pont { font-size: clamp(11px, 1.8vh, 18px); }
+
+  .sorszam {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--muted);
+    font-size: clamp(10px, 1.6vh, 16px);
+    margin-right: 0.6vw;
+  }
+
+  /* ---------- kategóriák ---------- */
+
+  #kategoriak {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(3, 6, 12, 0.95);
+    display: grid;
+    place-items: center;
+    padding: 4vh 4vw;
+  }
+
+  #kategoriak[hidden] { display: none; }
+
+  .kat-racs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.4vh 1.4vw;
+    max-width: 1100px;
+    width: 100%;
+  }
+
+  .kat {
+    border: 3px solid var(--line);
+    background: var(--panel);
+    box-shadow: 4px 4px 0 var(--shadow);
+    padding: 1.4vh 1vw;
+  }
+
+  .kat small {
+    display: block;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(9px, 1.4vh, 13px);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin-bottom: 0.6vh;
+  }
+
+  .kat b { font-family: var(--font-display); font-weight: 700; font-size: clamp(12px, 2vh, 20px); }
+  .kat span { display: block; font-size: clamp(9px, 1.4vh, 13px); color: var(--muted); margin-top: 0.3vh; }
 </style>
 </head>
 <body>
 
-<div class="stage-wrap">
-  <div class="stage-head">
-    <div>
-      <img src="/static/img/logo-full-white.svg" alt="Nitrowise" style="height:34px;width:auto;display:block;margin-bottom:14px">
-      <h1 id="title">Eredmények</h1>
-      <p class="muted" id="sub">Töltés…</p>
+<div class="szinpad">
+  <div class="fejlec">
+    <div class="cim">
+      <img src="/static/img/logo-mark-white.svg" alt="Nitrowise">
+      <div>
+        <h1>Eredményhirdetés</h1>
+        <div class="sub" id="sub">Töltés…</div>
+      </div>
     </div>
-    <div class="row tight no-print">
-      <label class="switch"><input type="checkbox" id="blur"><i></i><span>Pontok elrejtése</span></label>
-      <button class="mini" id="refresh">Frissítés</button>
-      <a class="back" href="/admin" aria-label="Vissza az adminba">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-      </a>
+    <div class="row tight">
+      <button class="mini" id="mindet">Mindet felfedi</button>
+      <button class="mini" id="ujra">Újra elrejt</button>
+      <button class="mini" id="katGomb">Kategóriák</button>
     </div>
   </div>
 
-  <div class="board" id="board"></div>
+  <div class="dobogo" id="dobogo"></div>
+  <div class="mezony" id="mezony"></div>
+</div>
 
-  <h2 style="font-size:22px;margin-top:38px">Kategóriagyőztesek</h2>
-  <div class="winners" id="winners"></div>
+<div id="kategoriak" hidden>
+  <div>
+    <h1 style="text-align:center;margin:0 0 2vh;font-size:clamp(16px,3vh,30px)">Kategóriagyőztesek</h1>
+    <div class="kat-racs" id="katRacs"></div>
+    <p class="center small muted" style="margin-top:2vh">Koppints bárhová a bezáráshoz</p>
+  </div>
 </div>
 
 <script type="module">
 import { api, el, toast } from '/static/js/app.js';
 
 const $ = (id) => document.getElementById(id);
+const TAKART = '████████';
+const felfedve = new Set();
+let adat = null;
 
-/** Ne ismetlodjon a cim, ha a csapatnak meg nincs jatekneve. */
-function rankSub(t) {
-  return `${t.number}. csapat · ${t.voters} szavazó`;
+function csapatKartya(t, extra = '') {
+  const nyitva = felfedve.has(t.team_id);
+  const kartya = el('div', {
+    class: `csapat ${nyitva ? 'felfedve' : 'rejtve'} ${extra}`,
+    style: { '--team': nyitva ? t.accent_color : 'transparent' },
+    onclick: () => {
+      felfedve.has(t.team_id) ? felfedve.delete(t.team_id) : felfedve.add(t.team_id);
+      rajzol();
+    },
+  },
+    el('div', {},
+      el('div', { class: 'nev' }, nyitva ? t.label : TAKART),
+      el('div', { class: 'alcim' }, `${t.number}. csapat · ${t.voters} szavazó`)
+    ),
+    el('div', { class: 'pont' }, t.total_pct === null ? '-' : String(t.total_pct))
+  );
+  return kartya;
 }
 
-async function load() {
-  const r = await api('/api/admin/results');
-  $('sub').textContent =
-    `${r.stats.voters_voted} / ${r.stats.voters_total} szavazó · ${r.stats.submissions} szavazólap · ` +
-    (r.stats.voting_open ? 'a szavazás még nyitva' : 'a szavazás lezárva');
+function oszlop(hely, cimke, csapatok) {
+  return el('div', { class: `oszlop h${hely}` },
+    ...csapatok.map((t) => csapatKartya(t)),
+    csapatok.length > 1
+      ? el('div', { class: 'megosztott' }, `${csapatok.length} csapat holtversenyben`)
+      : null,
+    el('div', { class: 'hely-cimke' }, cimke),
+    el('div', { class: 'talp' }, String(hely))
+  );
+}
 
-  const best = r.ranking.find((x) => x.total_pct !== null);
-  const maxPct = best ? best.total_pct : 100;
+function rajzol() {
+  const helyek = new Map();
+  for (const t of adat.ranking) {
+    if (t.rank === null) continue;
+    if (!helyek.has(t.rank)) helyek.set(t.rank, []);
+    helyek.get(t.rank).push(t);
+  }
 
-  $('board').replaceChildren(
-    ...r.ranking.map((t) =>
-      el('div', { class: 'rank', style: { '--team': t.accent_color } },
-        el('div', { class: 'rank-pos' }, t.rank ? String(t.rank) : '-'),
-        el('div', {},
-          el('div', { class: 'rank-title' }, t.label),
-          el('div', { class: 'rank-sub' }, rankSub(t)),
-          el('div', { class: 'meter' }, el('i', {
-            style: { width: `${t.total_pct === null ? 0 : Math.round((t.total_pct / (maxPct || 1)) * 100)}%` },
-          }))
-        ),
-        el('div', { class: 'rank-score' },
-          el('b', {}, t.total_pct === null ? '-' : String(t.total_pct)),
-          el('span', {}, 'pont / 100')
-        )
-      )
-    )
+  $('dobogo').replaceChildren(
+    oszlop(2, 'Második hely', helyek.get(2) || []),
+    oszlop(1, 'Első hely', helyek.get(1) || []),
+    oszlop(3, 'Harmadik hely', helyek.get(3) || [])
   );
 
-  $('winners').replaceChildren(
-    ...r.category_winners.map((w) =>
-      el('div', { class: 'winner' },
+  const tobbi = [];
+  for (const [hely, lista] of [...helyek].sort((a, b) => a[0] - b[0])) {
+    if (hely <= 3) continue;
+    for (const t of lista) tobbi.push([hely, t]);
+  }
+  for (const t of adat.ranking.filter((x) => x.rank === null)) tobbi.push([null, t]);
+
+  $('mezony').replaceChildren(
+    ...tobbi.map(([hely, t]) => {
+      const k = csapatKartya(t);
+      k.prepend(el('span', { class: 'sorszam' }, hely ? `${hely}.` : '-'));
+      k.style.gridTemplateColumns = 'auto 1fr auto';
+      return k;
+    })
+  );
+}
+
+async function betolt() {
+  adat = await api('/api/admin/results');
+  const s = adat.stats;
+  $('sub').textContent =
+    `${s.voters_voted} / ${s.voters_total} szavazó · ${s.submissions} szavazólap · `
+    + (s.voting_open ? 'a szavazás még nyitva' : 'a szavazás lezárva');
+  rajzol();
+}
+
+$('mindet').addEventListener('click', () => {
+  adat.ranking.forEach((t) => felfedve.add(t.team_id));
+  rajzol();
+});
+
+$('ujra').addEventListener('click', () => {
+  felfedve.clear();
+  rajzol();
+});
+
+$('katGomb').addEventListener('click', () => {
+  $('katRacs').replaceChildren(
+    ...adat.category_winners.map((w) =>
+      el('div', { class: 'kat' },
         el('small', {}, w.label),
         w.winner
           ? el('div', {},
@@ -99,18 +334,19 @@ async function load() {
       )
     )
   );
-}
-
-$('blur').addEventListener('change', (e) => {
-  document.getElementById('board').classList.toggle('hidden-scores', e.target.checked);
+  $('kategoriak').hidden = false;
 });
-$('refresh').addEventListener('click', () => load().catch((err) => toast(err.message, true)));
 
-load().catch((err) => {
+$('kategoriak').addEventListener('click', () => { $('kategoriak').hidden = true; });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('kategoriak').hidden = true; });
+
+betolt().catch((err) => {
   if (err.status === 401) location.href = '/admin/login';
   else toast(err.message, true);
 });
-setInterval(() => load().catch(() => {}), 8000);
+
+// A szavazás közben is nézhető, ezért időnként frissítjük a még nem felfedett adatokat.
+setInterval(() => betolt().catch(() => {}), 15000);
 </script>
 </body>
 </html>

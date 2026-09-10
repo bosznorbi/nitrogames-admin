@@ -249,42 +249,185 @@ async function save(path, filename) {
 /* ---------- API leiras ---------- */
 
 function docsCard(t, kepek) {
+  const NL = String.fromCharCode(10);
   const base = location.origin;
-  const curl = [
-    '# Mi hiányzik még? Ezt hívd meg bármikor.',
-    `curl -H "Authorization: Bearer ${t.kod}" ${base}/api/csapat/allapot`,
-    '',
-    '# Csapatnév, játéknév, leírás',
-    `curl -X PUT -H "Authorization: Bearer ${t.kod}" -H "Content-Type: application/json" \\`,
-    `  -d '{"csapatnev":"Kávészünet","jatek_neve":"A játékunk","leiras":"Miről szól"}' \\`,
-    `  ${base}/api/csapat`,
-    '',
-    `# Háttérkép (pontosan ${kepek.background.width}x${kepek.background.height})`,
-    `curl -X POST -H "Authorization: Bearer ${t.kod}" -H "Content-Type: image/png" \\`,
-    `  --data-binary @hatter.png ${base}/api/csapat/hatterkep`,
-    '',
-    `# Csempekép (pontosan ${kepek.icon.width}x${kepek.icon.height})`,
-    `curl -X POST -H "Authorization: Bearer ${t.kod}" -H "Content-Type: image/png" \\`,
-    `  --data-binary @csempe.png ${base}/api/csapat/csempekep`,
-    '',
-    '# A saját QR-kódotok, nyomtatáshoz',
-    `curl -H "Authorization: Bearer ${t.kod}" "${base}/api/csapat/qr?size=1200" -o qr.png`,
-  ].join('\n');
+  const B = kepek.background;
+  const I = kepek.icon;
+
+  const VEGPONTOK = [
+    {
+      m: 'GET',
+      ut: '/api/csapat/allapot',
+      mit: 'Mi hiányzik még. Ezt érdemes ismételten meghívni.',
+      keres: `curl -H "Authorization: Bearer ${t.kod}"\
+  ${base}/api/csapat/allapot`,
+      valasz: `{
+  "kesz": false,
+  "kesz_darab": 4,
+  "osszesen": 6,
+  "uzenet": "Még 2 dolog hiányzik.",
+  "kovetkezo_lepes": {
+    "kulcs": "csempekep",
+    "teendo": "Töltsetek fel csempeképet, pontosan ${I.width}x${I.height} képpont.",
+    "hogyan": "POST ${base}/api/csapat/csempekep"
+  }
+}`,
+    },
+    {
+      m: 'GET',
+      ut: '/api/csapat',
+      mit: 'Minden adat, a készültség és a kötelező képméretek.',
+      keres: `curl -H "Authorization: Bearer ${t.kod}" ${base}/api/csapat`,
+      valasz: `{
+  "ok": true,
+  "csapat": {
+    "kod": "${t.kod}",
+    "csapatnev": "Kávészünet",
+    "jatek_neve": "Űrpatkányok bosszúja",
+    "szavazolap_url": "${base}/t/..."
+  },
+  "keszultseg": { "kesz": false, "hianyzik": [] },
+  "kepek": { "background": { "width": ${B.width}, "height": ${B.height} } }
+}`,
+    },
+    {
+      m: 'PUT',
+      ut: '/api/csapat',
+      mit: 'Csapatnév, játéknév, mottó, leírás, szín. Bármelyik mező külön is küldhető.',
+      keres: `curl -X PUT -H "Authorization: Bearer ${t.kod}"\
+  -H "Content-Type: application/json"\
+  -d '{"csapatnev":"Kávészünet","jatek_neve":"Űrpatkányok bosszúja","leiras":"Két játékos, egy perc.","szin":"#ff5c8a"}'\
+  ${base}/api/csapat`,
+      valasz: `{
+  "ok": true,
+  "mentve": ["csapatnev", "jatek_neve", "leiras", "szin"],
+  "keszultseg": { "kesz": false, "hianyzik": [] }
+}`,
+    },
+    {
+      m: 'POST',
+      ut: '/api/csapat/hatterkep',
+      mit: `A szavazólapotok teljes háttere a telefonon. Pontosan ${B.width}x${B.height}.`,
+      keres: `curl -X POST -H "Authorization: Bearer ${t.kod}"\
+  -H "Content-Type: image/png"\
+  --data-binary @hatter.png\
+  ${base}/api/csapat/hatterkep`,
+      valasz: `{
+  "ok": true,
+  "feltoltve": "háttérkép",
+  "url": "${base}/uploads/....png",
+  "meret": { "width": ${B.width}, "height": ${B.height}, "bajt": 482113, "formatum": "png" }
+}`,
+    },
+    {
+      m: 'POST',
+      ut: '/api/csapat/csempekep',
+      mit: `A főoldal rácsában ez jelöli a játékotokat. Pontosan ${I.width}x${I.height}.`,
+      keres: `curl -X POST -H "Authorization: Bearer ${t.kod}"\
+  -H "Content-Type: image/png"\
+  --data-binary @csempe.png\
+  ${base}/api/csapat/csempekep`,
+      valasz: `{
+  "ok": true,
+  "feltoltve": "csempekép",
+  "meret": { "width": ${I.width}, "height": ${I.height} }
+}`,
+    },
+    {
+      m: 'GET',
+      ut: '/api/csapat/qr',
+      mit: 'A saját QR-kódotok. format=png|svg|json, size=128..2048.',
+      keres: `curl -H "Authorization: Bearer ${t.kod}"\
+  "${base}/api/csapat/qr?size=1200" -o qr.png`,
+      valasz: `PNG kép. A format=json ezt adja:
+{
+  "szavazolap_url": "${base}/t/...",
+  "png": "${base}/api/csapat/qr?format=png&size=1000",
+  "svg": "${base}/api/csapat/qr?format=svg"
+}`,
+    },
+  ];
+
+  const hiba = `Hibáknál beszédes üzenet jön, például rossz képméretnél:
+{
+  "error": "rossz_meret",
+  "message": "A kép 800x600, de pontosan ${B.width}x${B.height} kell.",
+  "kapott": { "width": 800, "height": 600, "format": "png" },
+  "elvart": { "width": ${B.width}, "height": ${B.height} }
+}`;
+
+  /** Egyben bemásolható összefoglaló az AI-nak. */
+  function aiSzoveg() {
+    return [
+      'Nitrogames nevezés: a játékunk adatait erre a szerverre kell feltölteni,',
+      'különben a többiek nem tudnak rá szavazni.',
+      '',
+      `Szerver: ${base}`,
+      `Csapatkód: ${t.kod}`,
+      '',
+      'A kódot minden híváshoz az Authorization: Bearer fejlécben kell küldeni.',
+      'A kötőjel és a kis- vagy nagybetű nem számít.',
+      '',
+      'Kötelező képméretek (pontosan ekkorák, a szerver mást elutasít):',
+      `  háttérkép:  ${B.width} x ${B.height}`,
+      `  csempekép:  ${I.width} x ${I.height}`,
+      '',
+      'Fontos: hívd meg a GET /api/csapat/allapot végpontot, az megmondja,',
+      'mi hiányzik még, és mi a következő lépés. A végén is ellenőrizd vele,',
+      'hogy tényleg készen vagyunk.',
+      '',
+      'Végpontok:',
+      ...VEGPONTOK.flatMap((v) => [
+        '',
+        `${v.m} ${v.ut}`,
+        `  ${v.mit}`,
+        '  Példa kérés:',
+        ...v.keres.split(NL).map((sor) => '    ' + sor),
+        '  Példa válasz:',
+        ...v.valasz.split(NL).map((sor) => '    ' + sor),
+      ]),
+      '',
+      hiba,
+    ].join(NL);
+  }
 
   return el('div', { class: 'card' },
-    el('h2', { style: { marginTop: '0' } }, 'API'),
-    el('p', { class: 'small muted', style: { marginTop: '0' } },
-      'A kódotokat Authorization: Bearer fejlécben küldjétek. Kötőjellel és anélkül is jó, a kis- és nagybetű sem számít.'),
-    el('div', { style: { marginBottom: '14px' } },
-      ep('GET', '/api/csapat/allapot', 'Mi hiányzik még. Ezt érdemes ismételten hívni.'),
-      ep('GET', '/api/csapat', 'Minden adat és a készültség.'),
-      ep('PUT', '/api/csapat', 'csapatnev, jatek_neve, mottó, leiras, szin'),
-      ep('POST', '/api/csapat/hatterkep', `${kepek.background.width}x${kepek.background.height}`),
-      ep('POST', '/api/csapat/csempekep', `${kepek.icon.width}x${kepek.icon.height}`),
-      ep('GET', '/api/csapat/qr', 'A saját QR-kódotok. format=png|svg|json')
+    el('div', { class: 'row', style: { justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' } },
+      el('h2', { style: { margin: '0' } }, 'API'),
+      el('button', {
+        class: 'mini',
+        onclick: async () => {
+          const szoveg = aiSzoveg();
+          try {
+            await navigator.clipboard.writeText(szoveg);
+            toast('Kimásolva, illeszd be az AI-nak');
+          } catch {
+            prompt('Másold ki kézzel:', szoveg);
+          }
+        },
+      }, 'Másolás AI-nak')
     ),
-    el('pre', { class: 'code' }, curl),
-    el('div', { class: 'note warn' },
+    el('p', { class: 'small muted', style: { marginTop: '0' } },
+      'A kódotokat Authorization: Bearer fejlécben küldjétek. Kötőjellel és anélkül is jó, '
+      + 'a kis- és nagybetű sem számít. Nyisd le a végpontokat a példákért.'),
+
+    ...VEGPONTOK.map((v) =>
+      el('details', { class: 'vegpont' },
+        el('summary', {},
+          el('b', {}, v.m),
+          el('code', {}, v.ut),
+          el('span', {}, v.mit)
+        ),
+        el('div', { class: 'pelda' },
+          el('small', {}, 'Példa kérés'),
+          el('pre', { class: 'code' }, v.keres),
+          el('small', {}, 'Példa válasz'),
+          el('pre', { class: 'code' }, v.valasz)
+        )
+      )
+    ),
+
+    el('div', { class: 'note warn', style: { marginTop: '14px' } },
       el('strong', {}, 'A kód a csapaté. '),
       'Ne tegyétek ki nyilvános repóba, és ne adjátok másik csapatnak.')
   );
@@ -319,8 +462,10 @@ async function connect(value) {
 
 $('connect').addEventListener('click', () => connect($('code').value));
 $('code').addEventListener('keydown', (e) => { if (e.key === 'Enter') connect($('code').value); });
+// Gépelés közben magától beteszi a kötőjelet: XXXX-XXXX.
 $('code').addEventListener('input', (e) => {
-  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+  const tiszta = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+  e.target.value = tiszta.length > 4 ? `${tiszta.slice(0, 4)}-${tiszta.slice(4)}` : tiszta;
 });
 
 $('forget').addEventListener('click', () => {

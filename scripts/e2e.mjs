@@ -111,7 +111,7 @@ await admin.fetch('/api/admin/voters', { json: { count: 12 } });
 // A teszt allitsa be a sajat elofeltetelet, ne fuggjon az aktualis beallitasoktol.
 await admin.fetch('/api/admin/settings', {
   method: 'PUT',
-  json: { voting_open: true, require_all_criteria: true, allow_comments: true },
+  json: { voting_open: true },
 });
 
 const overview = await admin.fetch('/api/admin/overview');
@@ -140,7 +140,7 @@ check('névvel belépés megszűnt', (await new Session().fetch('/api/session/jo
 const qrLogin = new Session();
 const loginUrl = new URL(votersRes.body.voters.find((v) => v.code !== 'TESZT').login_url).pathname;
 const redir = await qrLogin.fetch(loginUrl);
-check('QR belépés a főoldalra visz', redir.status === 302 && redir.location === '/');
+check('QR belépés a főoldalra visz', redir.status === 302 && redir.location.startsWith('/?belepes='));
 
 console.log('\n--- fooldal ---');
 check('főoldal belépés nélkül 401', (await new Session().fetch('/api/home')).status === 401);
@@ -148,7 +148,7 @@ const home = await teszt.fetch('/api/home');
 check('főoldal 9 csempét ad', home.body.teams.length === 9);
 check('kezdetben egy csempe sincs kipipálva', home.body.done === 0);
 check('a csempék nem adnak szavazó linket', !JSON.stringify(home.body.teams[0]).includes('/t/'));
-check('a felirat testreszabható', typeof home.body.ready_text === 'string' && home.body.ready_text.length > 0);
+check('a főoldal tudja az esemény nevét', typeof home.body.event_name === 'string' && home.body.event_name.length > 0);
 
 console.log('\n--- csapat API ---');
 const code = teams[0].code;
@@ -174,7 +174,7 @@ check('rossz szín elutasítva',
   (await teamApi.fetch('/api/csapat', { method: 'PUT', headers, json: { szin: 'piros' } })).status === 400);
 
 const bg = makePng(1080, 1920);
-const icon = makePng(600, 800);
+const icon = makePng(640, 768);
 check('háttérkép feltöltés',
   (await teamApi.fetch('/api/csapat/hatterkep', { method: 'POST', headers: { ...headers, 'content-type': 'image/png' }, body: bg })).status === 200);
 check('rossz méret elutasítva',
@@ -206,8 +206,10 @@ check('kitalált azonosítóra 404', (await teszt.fetch('/api/teams/kitalaltazon
 const scores = Object.fromEntries(page.body.criteria.map((c) => [c.key, c.max]));
 const voted = await teszt.fetch(`/api/teams/${votePublicId}/vote`, { method: 'POST', json: { scores, comment: 'Ütős!' } });
 check('szavazat mentése', voted.status === 200 && voted.body.public_id === votePublicId);
-check('hiányos szavazat elutasítva',
-  (await teszt.fetch(`/api/teams/${votePublicId}/vote`, { method: 'POST', json: { scores: { feeling: 3 } } })).status === 400);
+check('részleges szavazat is elmenthető',
+  (await teszt.fetch(`/api/teams/${votePublicId}/vote`, { method: 'POST', json: { scores: { feeling: 3 } } })).status === 200);
+check('üres szavazat elutasítva',
+  (await teszt.fetch(`/api/teams/${votePublicId}/vote`, { method: 'POST', json: { scores: {} } })).status === 400);
 check('belépés nélkül nem lehet szavazni',
   (await new Session().fetch(`/api/teams/${votePublicId}/vote`, { method: 'POST', json: { scores } })).status === 401);
 
@@ -252,7 +254,8 @@ check('szavazói PDF', vPdf.status === 200 && vPdf.body.subarray(0, 5).toString(
 check('szavazói PDF egy lap 13 cetlihez', pdfPages(vPdf.body) === 1, `${pdfPages(vPdf.body)} oldal`);
 const tPdf = await admin.fetch('/api/admin/print/teams.pdf', { binary: true });
 check('csapat PDF', tPdf.status === 200 && tPdf.body.subarray(0, 5).toString() === '%PDF-');
-check('csapat PDF kettő per lap', pdfPages(tPdf.body) === 5, `${pdfPages(tPdf.body)} oldal`);
+const aktivCsapat = (await admin.fetch('/api/admin/overview')).body.counts.teams;
+check('csapat PDF három per lap', pdfPages(tPdf.body) === Math.ceil(aktivCsapat / 3), `${pdfPages(tPdf.body)} oldal / ${aktivCsapat} csapat`);
 check('PDF jelszó nélkül nem érhető el', (await new Session().fetch('/api/admin/print/teams.pdf')).status === 401);
 check('CSV export megszűnt', (await admin.fetch('/api/admin/export/votes.csv')).status === 404);
 
@@ -260,6 +263,24 @@ console.log('\n--- eredmenyek ---');
 const results = await admin.fetch('/api/admin/results');
 check('eredmények számolódnak', results.body.ranking.length === 9);
 check('nullázás után nincs pontszám', results.body.ranking.every((t) => t.total_pct === null));
+
+
+console.log('\n--- beegetett szabalyok es szavazoszam ---');
+const cfg = (await new Session().fetch('/api/config')).body;
+check('a megjegyzés engedélyezett', cfg.allow_comments === true);
+check('nincs több állítható szöveg', cfg.ready_text === undefined);
+
+await admin.fetch('/api/admin/voters', { json: { count: 5 } });
+const kevesebb = (await admin.fetch('/api/admin/voters')).body.voters;
+check('a szavazószám pontosan beállítható', kevesebb.filter((v) => !v.is_test).length === 5,
+  String(kevesebb.filter((v) => !v.is_test).length));
+check('a TESZT kód a csökkentést is túléli', kevesebb.some((v) => v.is_test));
+await admin.fetch('/api/admin/voters', { json: { count: 12 } });
+
+console.log('\n--- holtverseny ---');
+const rang = (await admin.fetch('/api/admin/results')).body.ranking.filter((t) => t.rank !== null);
+const helyek = [...new Set(rang.map((t) => t.rank))].sort((a, b) => a - b);
+check('a helyezések hézagmentesek', helyek.every((h, i) => h === i + 1), helyek.join(','));
 
 console.log('\n--- oldalak ---');
 for (const [path, expect] of [

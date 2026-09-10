@@ -57,20 +57,53 @@ function inkFor(hex) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.42 ? '#10121b' : '#ffffff';
 }
 
+/*
+ * Négyfokozatú skálán arcok jelennek meg szám helyett. Nem Unicode emojit
+ * rajzolunk, hanem sajátot: az emoji készletek platformonként mások, és
+ * színes rajzként kilógnának ebből a pixeles felületből.
+ */
+const ARCOK = [
+  { szo: 'Hát...', szem: 'y="6"', szaj: 'M4,12 L7,13 L12,10' },
+  { szo: 'Elmegy', szem: 'y="6"', szaj: 'M5,11.5 L11,11.5' },
+  { szo: 'Jó', szem: 'y="5"', szaj: 'M4,10 L6,12.5 L10,12.5 L12,10' },
+  { szo: 'Nagyon jó', szem: 'y="5"', szaj: 'M3.5,9.5 L12.5,9.5 L11,13 L5,13 Z' },
+];
+
+function arcSvg(index) {
+  const a = ARCOK[index];
+  const kitolt = index === 3;
+  const wrap = document.createElement('span');
+  wrap.className = 'arc';
+  wrap.innerHTML = `<svg viewBox="0 0 16 16" aria-hidden="true">
+      <rect x="4" ${a.szem} width="2" height="2"/>
+      <rect x="10" ${a.szem} width="2" height="2"/>
+      <path d="${a.szaj}" fill="${kitolt ? 'currentColor' : 'none'}"
+            stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"/>
+    </svg>`;
+  return wrap;
+}
+
 function scaleNode(c) {
   const steps = c.max - c.min + 1;
-  const wrap = el('div', { class: `scale ${steps > 7 ? 'wide' : ''}`, role: 'radiogroup', 'aria-label': c.label });
+  const arcos = steps === 4;
+  const wrap = el('div', {
+    class: `scale ${arcos ? 'faces' : ''} ${steps > 7 ? 'wide' : ''}`,
+    role: 'radiogroup',
+    'aria-label': c.label,
+  });
+
   for (let v = c.min; v <= c.max; v++) {
+    const i = v - c.min;
     wrap.append(
       el('button', {
         type: 'button',
         class: 'pip',
         role: 'radio',
         'aria-checked': 'false',
-        'aria-label': `${v} pont`,
+        'aria-label': arcos ? `${ARCOK[i].szo} (${v})` : `${v} pont`,
         dataset: { v: String(v) },
         onclick: () => setScore(c, v),
-      }, String(v))
+      }, arcos ? arcSvg(i) : String(v))
     );
   }
   return wrap;
@@ -79,11 +112,14 @@ function scaleNode(c) {
 function setScore(c, v) {
   scores[c.key] = v;
   const card = document.querySelector(`[data-criterion="${c.key}"]`);
-  card.querySelector('.criterion-value').textContent = `${v} / ${c.max}`;
+  const arcos = c.max - c.min + 1 === 4;
+  card.querySelector('.criterion-value').textContent = arcos ? ARCOK[v - c.min].szo : `${v} / ${c.max}`;
+
   for (const pip of card.querySelectorAll('.pip')) {
     const n = Number(pip.dataset.v);
-    pip.classList.toggle('on', n <= v);
-    pip.classList.toggle('dim', n < v);
+    // Arcoknál csak a kiválasztott világít, nem az alatta lévők: egy arc egy érzés.
+    pip.classList.toggle('on', arcos ? n === v : n <= v);
+    pip.classList.toggle('dim', arcos ? false : n < v);
     pip.setAttribute('aria-checked', n === v ? 'true' : 'false');
   }
   refreshProgress();

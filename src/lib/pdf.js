@@ -14,6 +14,7 @@ const ASSETS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..
 const REGULAR = path.join(ASSETS, 'fonts/DejaVuSans.ttf');
 const BOLD = path.join(ASSETS, 'fonts/DejaVuSans-Bold.ttf');
 const LOGO = path.join(ASSETS, 'logo-full-blue.png');
+const JEL = path.join(ASSETS, 'logo-mark-blue.png');
 
 /** Millimeter -> PDF pont. */
 const mm = (v) => v * 2.834645669;
@@ -55,8 +56,9 @@ export async function votersPdf(voters, { cols = 4 } = {}) {
   const columns = Math.min(Math.max(Number(cols) || 4, 2), 8);
   const colW = USABLE.width / columns;
   const padX = mm(1.5);
-  const qrSize = Math.min(colW - 2 * padX, mm(32));
-  const rowH = qrSize + mm(11);
+  const fejlecH = mm(6);
+  const qrSize = Math.min(colW - 2 * padX, mm(30));
+  const rowH = fejlecH + qrSize + mm(9);
   const rows = Math.max(1, Math.floor(USABLE.height / rowH));
   const perPage = columns * rows;
 
@@ -69,13 +71,27 @@ export async function votersPdf(voters, { cols = 4 } = {}) {
 
     const x = MARGIN + (slot % columns) * colW;
     const y = MARGIN + Math.floor(slot / columns) * rowH;
-
     cutBox(doc, x, y, colW, rowH);
-    doc.image(qrs[i], x + (colW - qrSize) / 2, y + mm(2.5), { width: qrSize });
+
+    // Fejléc: a jel és a NITROGAMES felirat egy sorban, középre igazítva.
+    const jelH = mm(3.6);
+    const jelW = jelH * (400 / 368);
+    doc.font('bold').fontSize(7.5);
+    const szoW = doc.widthOfString('NITROGAMES', { characterSpacing: 0.7 });
+    const egyutt = jelW + mm(1.2) + szoW;
+    const fx = x + (colW - egyutt) / 2;
+    const fy = y + mm(2);
+    doc.image(JEL, fx, fy, { height: jelH });
+    doc.fillColor(INK).text('NITROGAMES', fx + jelW + mm(1.2), fy + mm(0.4), {
+      characterSpacing: 0.7,
+      lineBreak: false,
+    });
+
+    doc.image(qrs[i], x + (colW - qrSize) / 2, y + fejlecH, { width: qrSize });
     doc.font('bold').fontSize(15).fillColor(INK).text(
       voter.code.split('').join(' '),
       x + padX,
-      y + mm(2.5) + qrSize + mm(1.5),
+      y + fejlecH + qrSize + mm(1.2),
       { width: colW - 2 * padX, align: 'center', lineBreak: false }
     );
   });
@@ -89,65 +105,59 @@ export async function votersPdf(voters, { cols = 4 } = {}) {
 }
 
 /**
- * Csapat beleptetolap: A5, ketto egy A4 lapon. Nem kiallitasra valo, hanem
- * ezzel csatlakoznak a sajat csapatukhoz: rajta a kod, a szervercim, es egy
- * QR, amit telefonrol tovabb tudnak kuldeni maguknak a munkagepre.
+ * Csapat beleptetolap: harom fer egy A4 lapra. Nem kiallitasra valo, ezzel
+ * csatlakoznak a sajat csapatukhoz. Rajta a kod, a konzol cime es egy QR,
+ * amit telefonrol tovabb tudnak kuldeni a munkagepre.
  *
- * @param {Array<{number:number, code:string, console_url:string}>} teams
+ * @param {Array<{code:string, console_url:string}>} teams
  */
 export async function teamSheetPdf(teams, { base = '' } = {}) {
-  const gap = mm(4);
-  const ticketH = (USABLE.height - gap) / 2;
+  const gap = mm(3);
+  const ticketH = (USABLE.height - 2 * gap) / 3;
   const doc = newDoc('Nitrogames csapat belépők');
   const qrs = await Promise.all(teams.map((t) => qrPngBuffer(t.console_url, { size: 600 })));
   const host = base.replace(/^https?:\/\//, '');
 
   teams.forEach((team, i) => {
-    if (i % 2 === 0) doc.addPage();
+    if (i % 3 === 0) doc.addPage();
 
     const x = MARGIN;
-    const y = MARGIN + (i % 2) * (ticketH + gap);
+    const y = MARGIN + (i % 3) * (ticketH + gap);
     cutBox(doc, x, y, USABLE.width, ticketH);
 
-    const padding = mm(10);
-    // A Nitrowise logó a lap tetején: ez hivatalos kiosztott papír.
-    doc.image(LOGO, x + padding, y + mm(8), { width: mm(40) });
-    const qrSize = mm(52);
-    const leftW = USABLE.width - qrSize - 3 * padding;
+    const padding = mm(8);
+    const qrSize = mm(46);
+    const qx = x + USABLE.width - padding - qrSize;
+    const leftW = qx - x - 2 * padding;
     const lx = x + padding;
-    // A bal oldali blokk kozelitoleg 66 mm magas, ezt kozepre tesszuk.
-    let cy = y + (ticketH - mm(66)) / 2;
+    let cy = y + padding;
 
-    doc.font('bold').fontSize(26).fillColor(INK)
-      .text(`${team.number}. csapat`, lx, cy, { width: leftW });
+    doc.image(LOGO, lx, cy, { width: mm(38) });
+    cy += mm(9);
+
+    doc.font('sans').fontSize(9).fillColor(MUTED).text('A csapatkódotok:', lx, cy, { width: leftW });
+    cy += mm(5);
+
+    doc.font('bold').fontSize(28).fillColor(INK)
+      .text(team.code, lx, cy, { width: leftW, characterSpacing: 1.5 });
     cy += mm(13);
 
-    doc.font('sans').fontSize(10).fillColor(MUTED)
-      .text('A csapatkódotok, ezzel éritek el az API-t:', lx, cy, { width: leftW });
-    cy += mm(6);
-
-    doc.font('bold').fontSize(30).fillColor(INK)
-      .text(team.code, lx, cy, { width: leftW, characterSpacing: 1.5 });
-    cy += mm(15);
-
-    doc.font('sans').fontSize(10).fillColor(MUTED)
-      .text('A szerver címe:', lx, cy, { width: leftW });
-    cy += mm(5);
+    doc.font('sans').fontSize(9).fillColor(MUTED).text('Írjátok be a böngészőbe:', lx, cy, { width: leftW });
+    cy += mm(4.5);
     doc.font('bold').fontSize(12).fillColor(INK)
-      .text(host, lx, cy, { width: leftW, lineBreak: false });
-    cy += mm(10);
+      .text(`${host}/csapat`, lx, cy, { width: leftW, lineBreak: false });
+    cy += mm(8);
 
-    doc.font('sans').fontSize(9).fillColor(MUTED).text(
-      'Olvassátok be a QR-kódot telefonnal, és küldjétek át magatoknak Teamsen arra a gépre, '
-      + 'amin fejlesztetek. A megnyíló oldal mindent megmutat: mit kell feltölteni, és mi hiányzik még.',
-      lx, cy, { width: leftW, lineGap: 1.5 }
+    doc.font('sans').fontSize(8.5).fillColor(MUTED).text(
+      'Ezzel a kóddal éritek el a csapat konzolt és az API-t, ahányan akarjátok, '
+      + 'telefonról és gépről is. Más csapatnak ne adjátok oda.',
+      lx, cy, { width: leftW, lineGap: 1 }
     );
 
-    const qx = x + USABLE.width - padding - qrSize;
-    const qy = y + (ticketH - qrSize - mm(6)) / 2;
+    const qy = y + (ticketH - qrSize - mm(5)) / 2;
     doc.image(qrs[i], qx, qy, { width: qrSize });
-    doc.font('sans').fontSize(8).fillColor(MUTED)
-      .text('Csapat konzol', qx, qy + qrSize + mm(2), { width: qrSize, align: 'center', lineBreak: false });
+    doc.font('sans').fontSize(7.5).fillColor(MUTED)
+      .text('Csapat konzol', qx, qy + qrSize + mm(1.6), { width: qrSize, align: 'center', lineBreak: false });
   });
 
   if (!teams.length) {

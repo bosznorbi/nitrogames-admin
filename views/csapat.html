@@ -56,11 +56,56 @@
   .todo-item strong { display: block; font-family: var(--font-display); font-size: 11px; text-transform: uppercase; line-height: 1.6; }
   .todo-item code { display: block; margin-top: 6px; font-size: 10px; color: var(--muted); word-break: break-all; }
 
-  .ep { display: grid; grid-template-columns: 62px 1fr; gap: 9px; padding: 9px 0; border-bottom: 2px solid var(--line); }
-  .ep:last-child { border-bottom: none; }
-  .ep b { font-family: var(--font-display); font-size: 10px; color: var(--green); }
-  .ep code { font-size: 11px; word-break: break-all; color: var(--text); }
-  .ep span { display: block; color: var(--muted); font-size: 12.5px; margin-top: 3px; font-family: var(--font-body); }
+  /* Lenyitható végpontok példákkal. */
+  .vegpont {
+    border: 3px solid var(--line);
+    background: var(--panel-2);
+    margin-bottom: 8px;
+  }
+
+  .vegpont summary {
+    cursor: pointer;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 58px 1fr;
+    gap: 4px 10px;
+    align-items: baseline;
+    list-style: none;
+  }
+
+  .vegpont summary::-webkit-details-marker { display: none; }
+  .vegpont summary::before { content: none; }
+  .vegpont[open] { border-color: var(--line-lit); }
+  .vegpont summary:hover { background: rgba(46, 232, 255, 0.05); }
+
+  .vegpont summary b {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--green);
+  }
+
+  .vegpont summary code { font-size: 12px; color: var(--text); word-break: break-all; }
+
+  .vegpont summary span {
+    grid-column: 2;
+    display: block;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+
+  .pelda { padding: 0 12px 12px; }
+
+  .pelda small {
+    display: block;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin: 8px 0 5px;
+  }
 
   .preview { display: grid; grid-template-columns: 120px 1fr; gap: 16px; align-items: start; }
 
