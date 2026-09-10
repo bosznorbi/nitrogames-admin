@@ -1,9 +1,9 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import path from 'node:path';
-import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { config, baseUrl } from './config.js';
+import { detectLanIp, lanIp, localIps } from './lib/lan.js';
 import { db } from './db.js';
 import { publicRouter } from './routes/public.js';
 import { teamRouter } from './routes/team.js';
@@ -42,10 +42,13 @@ app.use(
   '/static',
   express.static(path.join(ROOT, 'public'), { maxAge: config.isProd ? '1h' : 0, index: false })
 );
+// A feltöltött fájlok nevében időbélyeg van, tehát frissítéskor új a név.
+// Így hosszan cachelhetők: minden telefon egyszer tölti le a háttérképeket.
 app.use(
   '/uploads',
   express.static(config.uploadDir, {
-    maxAge: '5m',
+    maxAge: '365d',
+    immutable: true,
     index: false,
     setHeaders: (res) => res.set('X-Content-Type-Options', 'nosniff'),
   })
@@ -121,34 +124,46 @@ app.use((err, req, res, _next) => {
 
 /* ---------- indulas ---------- */
 
+// A QR kódok ebből a címből készülnek helyi futtatásnál.
+await detectLanIp();
+
 const server = app.listen(config.port, '0.0.0.0', () => {
   const teams = db.prepare('SELECT COUNT(*) AS c FROM teams').get().c;
   const voters = db.prepare('SELECT COUNT(*) AS c FROM voters').get().c;
+  const ip = lanIp();
+
   console.log('');
   console.log(`  ${config.eventName} szavazóapp fut`);
-  console.log(`  helyi cím:   http://localhost:${config.port}`);
-  for (const ip of localIps()) console.log(`  hálózaton:   http://${ip}:${config.port}   <- erről érhető el telefonról`);
-  console.log(`  admin:       http://localhost:${config.port}/admin`);
-  console.log(`  adatbázis:   ${config.dbFile}`);
-  console.log(`  csapatok: ${teams}   szavazók: ${voters}`);
+  console.log('');
+
+  if (config.publicBaseUrl) {
+    console.log(`  Nyilvános cím:  ${config.publicBaseUrl}`);
+  } else if (ip) {
+    console.log(`  TELEFONRÓL:     http://${ip}:${config.port}`);
+    console.log('                  A QR kódokba is ez a cím kerül.');
+  } else {
+    console.log('  Nem találtam hálózati címet, a QR kódok a kérés hosztjából készülnek.');
+  }
+
+  console.log(`  Ezen a gépen:   http://localhost:${config.port}`);
+  console.log(`  Admin:          http://${ip || 'localhost'}:${config.port}/admin`);
+
+  const tobbi = localIps().filter((a) => a.ip !== ip);
+  if (tobbi.length) {
+    console.log('');
+    console.log('  Ha nem jó a fenti cím, próbáld ezeket:');
+    for (const a of tobbi) console.log(`    http://${a.ip}:${config.port}   (${a.name})`);
+  }
+
+  console.log('');
+  console.log(`  Csapatok: ${teams}   szavazó cetli: ${voters}`);
+  console.log(`  Adatbázis: ${config.dbFile}`);
   if (config.adminPassword === 'nitrogames') {
-    console.log('  FIGYELEM: alapértelmezett admin jelszó van érvényben, állítsd be az ADMIN_PASSWORD-ot.');
+    console.log('  FIGYELEM: alapértelmezett admin jelszó, állítsd be az ADMIN_PASSWORD-ot.');
   }
   console.log('');
 });
 
-const VIRTUAL_NIC = /vethernet|virtual|vmware|hyper-v|tailscale|zerotier|docker|wsl/i;
-
-function localIps() {
-  const out = [];
-  for (const [name, list] of Object.entries(os.networkInterfaces())) {
-    if (VIRTUAL_NIC.test(name)) continue;
-    for (const n of list || []) {
-      if (n.family === 'IPv4' && !n.internal) out.push(n.address);
-    }
-  }
-  return out;
-}
 
 function shutdown() {
   server.close(() => {

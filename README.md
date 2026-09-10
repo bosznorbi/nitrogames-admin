@@ -23,7 +23,7 @@ beolvasásával pontozzák őket.
 ## Tartalom
 
 1. [Gyors indítás](#gyors-indítás)
-2. [Tesztelés telefonról localhoston](#tesztelés-telefonról-localhoston)
+2. [Tesztelés telefonról](#tesztelés-telefonról)
 3. [Kitelepítés Railwayre](#kitelepítés-railwayre)
 4. [Az esemény menete](#az-esemény-menete)
 5. [Csapat API](#csapat-api)
@@ -83,30 +83,48 @@ npm test       # végigmegy a teljes folyamaton egy futó szerver ellen
 npm run demo -- --igen --arany 80   # véletlen DEMO szavazatok próbához
 ```
 
-## Tesztelés telefonról localhoston
+## Tesztelés telefonról
 
-A telefon és a gép legyen **ugyanazon a wifin**. Céges vendéghálón gyakran
-tiltott az eszközök közti forgalom, akkor használj mobil hotspotot.
+Helyi futtatásnál a szerver **magától a gép hálózati címén szolgál ki**, és a
+QR-kódokba is azt írja, nem localhostot. Így otthon is végigpróbálható minden
+telefonnal, pontosan úgy, ahogy a helyszínen működni fog.
 
-1. `npm start`
-2. Másik terminálban: `npm run lan`
-3. Olvasd be a terminálba rajzolt QR-kódot, vagy írd be a kiírt címet.
+```bash
+npm start
+```
 
-**Az admint is a hálózati címen nyisd meg** (`http://192.168.x.x:3000/admin`),
-ne localhoston. A QR-kódokba az a cím ég bele, amin az admint megnyitottad.
-Az Áttekintés fülön a Fő QR-kód kártya figyelmeztet, ha rossz címen vagy.
+Indításkor kiírja, mit kell a telefonba beütni:
 
-Ha nem tölt be:
+```
+  TELEFONRÓL:     http://192.168.1.24:3000
+                  A QR kódokba is ez a cím kerül.
+  Ezen a gépen:   http://localhost:3000
+```
 
-- **Windows tűzfal.** Az első indításnál engedélyezd a Node.js-t a *privát*
-  hálózaton. Kézzel, rendszergazdaként:
+QR-kód a terminálba, hogy ne kelljen gépelni:
 
-  ```bash
-  netsh advfirewall firewall add rule name="Nitrogames 3000" dir=in action=allow protocol=TCP localport=3000
-  ```
+```bash
+npm run lan
+```
 
-- **Rossz hálózati kártya.** Az `npm run lan` a kimenő útvonal alapján jelöli
-  meg, melyik címet érdemes először próbálni.
+Mindegy, hogy az admint localhoston vagy a hálózati címen nyitod meg: a
+kinyomtatott és a képernyőn látszó QR-kódok mindkét esetben a hálózati címre
+mutatnak. A címet a kimenő útvonal alapján ismerjük fel, tehát wifi és
+telefonos hotspot mellett is a jót választja.
+
+A telefon és a gép legyen ugyanazon a hálózaton. Céges vendéghálón gyakran
+tiltott az eszközök közti forgalom, olyankor kapcsolj a telefonodon hotspotot,
+csatlakozz rá a laptoppal, és indítsd újra a szervert.
+
+Ha nem tölt be, a Windows tűzfalon engedélyezd a Node.js bejövő kapcsolatait
+a privát hálózaton. Kézzel, rendszergazdaként:
+
+```bash
+netsh advfirewall firewall add rule name="Nitrogames 3000" dir=in action=allow protocol=TCP localport=3000
+```
+
+Élesben a `PUBLIC_BASE_URL` felülír mindent, tehát Railwayen a valódi domain
+kerül a kódokba.
 
 ## Kitelepítés Railwayre
 
@@ -158,6 +176,23 @@ A domaint a **Settings → Networking → Generate Domain** adja. Amint megvan,
 ```bash
 curl https://<a-te-domained>/healthz
 ```
+
+### Mennyi erőforrás kell
+
+Kb. 50 ember, 9 csapat, egy órányi szavazás. A becsült terhelés:
+
+| | Becslés |
+| --- | --- |
+| Kérések összesen | kb. 2500, átlagosan 1 kérés/másodperc alatt |
+| Csúcsterhelés | 20-30 kérés/másodperc, ha mindenki egyszerre indul |
+| Memória | 100-150 MB (Node és SQLite) |
+| Processzor | gyakorlatilag üresjárat |
+| Kimenő forgalom | 0,5-2 GB, szinte teljes egészében a háttérképek |
+
+A feltöltött képeket egy évre cachelhetőre állítjuk, és a fájlnévben időbélyeg
+van, tehát minden telefon **egyszer** tölti le a háttérképeket, frissítéskor
+pedig automatikusan az újat kapja. A forgalom nagy részét a 9 háttérkép adja,
+ezért érdemes a csapatoknak tömörített képet feltölteni.
 
 ## Az esemény menete
 

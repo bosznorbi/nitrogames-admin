@@ -2,6 +2,7 @@ import 'dotenv/config';
 import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import { lanIp } from './lib/lan.js';
 
 const int = (v, def) => {
   const n = Number.parseInt(v ?? '', 10);
@@ -44,9 +45,22 @@ export const config = {
   },
 };
 
-/** A QR kodokba es a megosztott linkekbe kerulo abszolut alap URL. */
+/**
+ * A QR kodokba es a megosztott linkekbe kerulo abszolut alap URL.
+ *
+ * Helyi futtatasnal szandekosan NEM a keres hosztjat hasznaljuk: ha az admint
+ * localhoston nyitod meg, a QR kodok is localhostra mutatnanak, azokat pedig
+ * telefonrol nem lehet beolvasni. Ilyenkor a gep halozati cimet tesszuk beluk,
+ * igy otthon is ugy tesztelheto minden, mintha a helyszinen lennenk.
+ */
 export function baseUrl(req) {
   if (config.publicBaseUrl) return config.publicBaseUrl;
+
+  if (!config.isProd) {
+    const ip = lanIp();
+    if (ip) return `http://${ip}:${config.port}`;
+  }
+
   const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim();
   const host = (req.headers['x-forwarded-host'] || req.headers.host || `localhost:${config.port}`).split(',')[0].trim();
   return `${proto}://${host}`;
