@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0b10">
+<meta name="robots" content="noindex">
+<title>Nitrogames szavazás</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="/"><span class="dot"></span><span id="eventName">Nitrogames</span></a>
+  <a class="who" href="/me" id="who" hidden></a>
+</header>
+
+<main class="wrap">
+  <div id="closedBanner" class="note warn" hidden style="margin-bottom:16px">
+    A szavazás jelenleg <strong>zárva</strong>. Amint megnyitjuk, itt tudsz pontozni.
+  </div>
+
+  <h1 id="title">Csapatok</h1>
+  <p class="lead" id="intro">Töltés…</p>
+
+  <div id="progressWrap" hidden>
+    <div class="progress-line">
+      <span id="progressText"></span>
+      <span id="progressPct" class="muted"></span>
+    </div>
+    <div class="bar"><i id="progressBar"></i></div>
+  </div>
+
+  <ul class="team-grid" id="teams">
+    <li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li>
+  </ul>
+
+  <div class="spacer"></div>
+  <p class="small muted center">
+    Egy csapat pontozásához olvasd be a tábláján lévő QR-kódot, vagy koppints rá a listában.
+  </p>
+
+  <div class="spacer"></div>
+  <div class="center"><button class="btn quiet" id="logout">Kilépés (nem én vagyok)</button></div>
+</main>
+
+<script type="module">
+import { api, el, esc, toast } from '/static/js/app.js';
+
+const $ = (id) => document.getElementById(id);
+
+async function load() {
+  let cfg;
+  try {
+    cfg = await api('/api/config');
+  } catch (err) {
+    $('intro').textContent = 'Nem sikerült betölteni. Frissítsd az oldalt.';
+    return;
+  }
+
+  document.title = `${cfg.event_name} szavazás`;
+  $('eventName').textContent = cfg.event_name;
+  $('intro').textContent = cfg.intro_text || '';
+  $('closedBanner').hidden = cfg.voting_open;
+
+  if (!cfg.voter) {
+    location.replace('/join?next=' + encodeURIComponent('/'));
+    return;
+  }
+
+  const who = $('who');
+  who.hidden = false;
+  who.textContent = cfg.voter.name || `Kód: ${cfg.voter.code}`;
+
+  const { teams } = await api('/api/teams');
+  const list = $('teams');
+  list.replaceChildren();
+
+  if (!teams.length) {
+    list.append(el('li', { class: 'note' }, 'Még nincsenek csapatok felvéve.'));
+    return;
+  }
+
+  for (const t of teams) {
+    const thumb = el('div', {
+      class: 'team-thumb',
+      style: t.background_url ? { backgroundImage: `url("${t.background_url}")` } : {},
+    }, t.background_url ? '' : String(t.number));
+
+    const title = t.game_name || t.name;
+    const bits = [];
+    if (title !== `${t.number}. csapat`) bits.push(`${t.number}. csapat`);
+    if (t.game_name && t.name !== title) bits.push(t.name);
+    if (!bits.length) bits.push('Még nincs feltöltött játék');
+
+    list.append(
+      el('li', {},
+        el('a', { class: 'team-item', href: `/t/${t.slug}`, style: { '--team': t.accent_color } },
+          thumb,
+          el('div', { class: 'team-body' },
+            el('div', { class: 'team-name' }, title),
+            el('div', { class: 'team-sub' }, bits.join(' · '))
+          ),
+          el('span', { class: `pill ${t.voted ? 'done' : ''}` }, t.voted ? 'Kész' : 'Pontozás')
+        )
+      )
+    );
+  }
+
+  const done = teams.filter((t) => t.voted).length;
+  $('progressWrap').hidden = false;
+  $('progressText').textContent = `${done} / ${teams.length} csapatot pontoztál`;
+  $('progressPct').textContent = done === teams.length ? 'Mindennel megvagy' : '';
+  $('progressBar').style.width = `${Math.round((done / teams.length) * 100)}%`;
+}
+
+$('logout').addEventListener('click', async () => {
+  await api('/api/session/logout', { method: 'POST' }).catch(() => {});
+  location.href = '/join';
+});
+
+load().catch((err) => toast(err.message, true));
+</script>
+</body>
+</html>

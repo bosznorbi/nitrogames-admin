@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0b10">
+<meta name="robots" content="noindex">
+<title>Saját szavazataim</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="/"><span class="dot"></span><span id="eventName">Nitrogames</span></a>
+  <a class="who" href="/">Csapatok</a>
+</header>
+
+<main class="wrap">
+  <h1>Saját szavazataim</h1>
+  <p class="lead" id="lead">Töltés…</p>
+
+  <div class="card">
+    <form id="nameForm" autocomplete="off">
+      <label class="field" style="margin-bottom:10px">
+        <span>A neved (az eredménylistában így jelensz meg)</span>
+        <input type="text" id="name" maxlength="40" placeholder="Nem kötelező">
+      </label>
+      <button class="btn ghost block" type="submit">Név mentése</button>
+    </form>
+  </div>
+
+  <h2>Beküldött pontszámok</h2>
+  <div id="list" class="stack"></div>
+
+  <div class="spacer"></div>
+  <a class="btn block" href="/">Vissza a csapatokhoz</a>
+</main>
+
+<script type="module">
+import { api, el, toast, since } from '/static/js/app.js';
+
+const $ = (id) => document.getElementById(id);
+let criteria = [];
+
+async function load() {
+  const cfg = await api('/api/config');
+  $('eventName').textContent = cfg.event_name;
+  criteria = cfg.criteria;
+
+  if (!cfg.voter) {
+    location.replace('/join?next=' + encodeURIComponent('/me'));
+    return;
+  }
+  $('name').value = cfg.voter.name || '';
+
+  const me = await api('/api/me');
+  $('lead').textContent = me.submissions.length
+    ? `${me.submissions.length} / ${me.total_teams} csapatot pontoztál. Azonosítód: ${me.voter.code}`
+    : `Még egy csapatot sem pontoztál. Azonosítód: ${me.voter.code}`;
+
+  const list = $('list');
+  list.replaceChildren();
+
+  if (!me.submissions.length) {
+    list.append(el('div', { class: 'note' }, 'Olvasd be egy csapat QR-kódját, és kezdheted is.'));
+    return;
+  }
+
+  for (const s of me.submissions) {
+    list.append(
+      el('a', { class: 'card', href: `/t/${s.slug}`, style: { textDecoration: 'none', display: 'block' } },
+        el('div', { class: 'row', style: { justifyContent: 'space-between', marginBottom: '8px' } },
+          el('strong', {}, s.game_name || s.name),
+          el('span', { class: 'small muted' }, since(s.updated_at))
+        ),
+        el('div', { class: 'row tight' },
+          criteria.map((c) =>
+            el('span', { class: 'pill' }, `${c.label}: ${s.scores[c.key] ?? '-'}`)
+          )
+        ),
+        s.comment ? el('p', { class: 'small muted', style: { margin: '10px 0 0' } }, `„${s.comment}”`) : null
+      )
+    );
+  }
+}
+
+$('nameForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    await api('/api/session/name', { method: 'POST', body: { name: $('name').value } });
+    toast('Név mentve');
+  } catch (err) {
+    toast(err.message, true);
+  }
+});
+
+load().catch((err) => toast(err.message, true));
+</script>
+</body>
+</html>
