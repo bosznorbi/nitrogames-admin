@@ -363,7 +363,7 @@ textarea { resize: vertical; min-height: 84px; }
   background: color-mix(in srgb, var(--team, var(--accent)) 13%, var(--surface));
 }
 
-.tile.done .tile-art { filter: none; opacity: 1; }
+.tile.done .tile-art { filter: none; opacity: 1; color: var(--team, var(--accent)); }
 .tile.done .tile-name { color: var(--text); }
 .tile.done .tile-check { opacity: 1; transform: scale(1); }
 
