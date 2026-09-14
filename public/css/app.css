@@ -908,3 +908,45 @@ body.has-bg .note { background: rgba(8, 13, 22, 0.88); }
   .tiles.mind-kesz .tile::after,
   .progress-ring.mind-kesz b { animation: none; }
 }
+
+/* ---------- lakat lezárt szavazásnál ---------- */
+
+/*
+ * A rács fölé nem írunk ki semmit, mert az görgethetővé tenné a telefonos
+ * nézetet. Helyette koppintásra felszáll egy lakat, és magától elfogy.
+ */
+.lakat {
+  position: fixed;
+  z-index: 60;
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  pointer-events: none;
+  animation: lakat-szall 1.15s steps(12) forwards;
+}
+
+.lakat svg { width: 32px; height: 32px; color: var(--amber); display: block; }
+
+.lakat span {
+  font-family: var(--font-display);
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--amber);
+  white-space: nowrap;
+  text-shadow: 2px 2px 0 var(--shadow);
+}
+
+@keyframes lakat-szall {
+  0% { opacity: 0; transform: translate(-50%, -40%) scale(0.75); }
+  18% { opacity: 1; transform: translate(-50%, -55%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -175%) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lakat { animation: lakat-halvany 1.15s steps(4) forwards; }
+  @keyframes lakat-halvany {
+    0% { opacity: 0; transform: translate(-50%, -55%); }
+    18% { opacity: 1; transform: translate(-50%, -55%); }
+    100% { opacity: 0; transform: translate(-50%, -55%); }
+  }
+}

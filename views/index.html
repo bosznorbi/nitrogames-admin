@@ -18,8 +18,6 @@
 </header>
 
 <main class="wrap tight-top">
-  <div id="closed"></div>
-
   <div class="progress-ring">
     <b id="progressText">…</b>
     <span id="progressSub"></span>
@@ -64,7 +62,29 @@ function szurkereKoppintott() {
   if (szurkeKoppintas >= 3) toast('Keresd meg a csapat asztalán a QR-kódot, és olvasd be.');
 }
 
-function tileNode(t, celebrate, index = 0) {
+/*
+ * Lezárt szavazásnál nem írunk ki semmit a rács fölé, mert az helyet venne el,
+ * és a telefonos nézetben görgetni kellene. Helyette minden koppintásra
+ * felszáll egy lakat: ez egyértelműen megmondja, hogy vége, és nem tolja el a
+ * rácsot. Ilyenkor a már pontozott csempék sem nyílnak meg többé.
+ */
+function lakatotDob(x, y) {
+  const n = el('div', { class: 'lakat', style: { left: `${Math.round(x)}px`, top: `${Math.round(y)}px` } });
+  n.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                   <rect x="4.5" y="10.5" width="15" height="10.5"/>
+                   <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>
+                 </svg><span>Szavazás zárva</span>`;
+  document.body.append(n);
+  n.addEventListener('animationend', () => n.remove());
+}
+
+function zarvaKoppintas(e) {
+  const r = e.currentTarget.getBoundingClientRect();
+  lakatotDob(r.left + r.width / 2, r.top + r.height / 2);
+}
+
+function tileNode(t, celebrate, index = 0, nyitva = true) {
   const art = el('div', {
     class: `tile-art ${t.icon_url ? '' : 'noart'}`,
     style: t.icon_url ? { backgroundImage: `url("${t.icon_url}")` } : {},
@@ -78,6 +98,11 @@ function tileNode(t, celebrate, index = 0) {
     style: { '--team': t.accent_color, '--hullam': String(Math.floor(index / 3) + (index % 3)) },
     dataset: { id: t.public_id },
   };
+
+  // Zárt szavazásnál semmi sem nyílik meg, csak a lakat száll fel.
+  if (!nyitva) {
+    return el('li', {}, el('div', { ...kozos, title: t.label, onclick: zarvaKoppintas }, ...tartalom));
+  }
 
   // Amire már szavazott, azt innen is módosíthatja. A többihez QR-kód kell.
   return el('li', {},
@@ -120,14 +145,9 @@ async function load() {
       : `még ${remaining} játék`;
   $('progressBar').style.width = data.total ? `${Math.round((data.done / data.total) * 100)}%` : '0%';
 
-  $('closed').replaceChildren(
-    data.voting_open
-      ? ''
-      : el('div', { class: 'note warn', style: { marginBottom: '12px' } },
-          'A szavazás még nem indult el. Ez az oldal a tiéd, nyugodtan bezárhatod.')
+  $('tiles').replaceChildren(
+    ...data.teams.map((t, i) => tileNode(t, t.public_id === justVoted, i, data.voting_open))
   );
-
-  $('tiles').replaceChildren(...data.teams.map((t, i) => tileNode(t, t.public_id === justVoted, i)));
 
   /*
    * A rács alatt szándékosan nincs semmilyen felirat: a súgó és a köszönöm is

@@ -82,8 +82,14 @@
     font-family: var(--font-display);
     font-weight: 700;
     font-size: 13px;
-    color: var(--green);
+    color: var(--muted);
   }
+
+  /* A HTTP-metódus színe, hogy egy pillantásból szét lehessen válogatni őket. */
+  .vegpont summary b.m-get { color: var(--green); }
+  .vegpont summary b.m-put { color: var(--amber); }
+  .vegpont summary b.m-post { color: var(--cyan); }
+  .vegpont summary b.m-delete { color: var(--danger); }
 
   .vegpont summary code { font-size: 14px; color: var(--text); word-break: break-all; }
 

@@ -157,9 +157,44 @@ function uploadCard(kind, title, spec, preview) {
  * csapatnak kelljen kepszerkesztovel bajlodnia: kozepre igazitva kitoltjuk
  * a celmeretet, a kilogo reszt levagjuk.
  */
-async function fitToSize(file, width, height) {
-  const bmp = await createImageBitmap(file);
-  if (bmp.width === width && bmp.height === height) return { buffer: await file.arrayBuffer(), type: file.type, resized: false };
+async function kepetBetolt(file) {
+  // A createImageBitmap a gyors út, de nem minden mobilböngésző eszi meg
+  // minden formátumnál. Ilyenkor a jó öreg <img> a tartalék.
+  if (typeof createImageBitmap === 'function') {
+    try {
+      return await createImageBitmap(file);
+    } catch { /* megyünk tovább a tartalékra */ }
+  }
+
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await (img.decode ? img.decode() : new Promise((ok, hiba) => {
+      img.onload = ok;
+      img.onerror = () => hiba(new Error('nem kép'));
+    }));
+    return img;
+  } finally {
+    // A rajzolás szinkron megtörtént, az objektum-URL elengedhető.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+}
+
+async function vaszonbol(canvas, tipus, minoseg) {
+  const blob = await new Promise((r) => canvas.toBlob(r, tipus, minoseg));
+  if (!blob) throw new Error('A böngésző nem tudta elmenteni a képet.');
+  return blob;
+}
+
+async function fitToSize(file, width, height, maxBytes) {
+  const kep = await kepetBetolt(file);
+  const kw = kep.width || kep.naturalWidth;
+  const kh = kep.height || kep.naturalHeight;
+
+  if (kw === width && kh === height && file.size <= maxBytes) {
+    return { buffer: await file.arrayBuffer(), type: file.type, resized: false };
+  }
 
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -167,13 +202,34 @@ async function fitToSize(file, width, height) {
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingQuality = 'high';
 
-  const scale = Math.max(width / bmp.width, height / bmp.height);
-  const w = bmp.width * scale;
-  const h = bmp.height * scale;
-  ctx.drawImage(bmp, (width - w) / 2, (height - h) / 2, w, h);
+  const scale = Math.max(width / kw, height / kh);
+  const w = kw * scale;
+  const h = kh * scale;
+  ctx.drawImage(kep, (width - w) / 2, (height - h) / 2, w, h);
+  if (kep.close) kep.close();
 
-  const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
-  return { buffer: await blob.arrayBuffer(), type: 'image/png', resized: true, from: `${bmp.width}×${bmp.height}` };
+  /*
+   * Egy telefonnal készült fotó ekkora vászonról PNG-ben 5-6 MB, amit a
+   * szerver elutasít. Ezért ha a PNG nem fér bele, JPEG-re váltunk, és ha
+   * kell, lejjebb visszük a minőséget. Grafikánál így is a PNG marad,
+   * mert az kicsi.
+   */
+  let blob = await vaszonbol(canvas, 'image/png');
+  let type = 'image/png';
+
+  if (blob.size > maxBytes) {
+    for (const q of [0.92, 0.82, 0.7, 0.55]) {
+      blob = await vaszonbol(canvas, 'image/jpeg', q);
+      type = 'image/jpeg';
+      if (blob.size <= maxBytes) break;
+    }
+  }
+
+  if (blob.size > maxBytes) {
+    throw new Error('A kép a tömörítés után is túl nagy. Próbálj egy kisebb felbontásút.');
+  }
+
+  return { buffer: await blob.arrayBuffer(), type, resized: true, from: `${kw}×${kh}` };
 }
 
 function wireUpload(kind) {
@@ -187,9 +243,10 @@ function wireUpload(kind) {
     status.style.color = '';
     let payload;
     try {
-      payload = await fitToSize(file, spec.width, spec.height);
-    } catch {
-      status.textContent = 'Ezt a fájlt nem tudom képként megnyitni.';
+      payload = await fitToSize(file, spec.width, spec.height, spec.max_bytes || 4194304);
+    } catch (err) {
+      // A valódi okot mutatjuk, mert a telefonos hibák nagyon eltérőek.
+      status.textContent = err.message || 'Ezt a fájlt nem tudom képként megnyitni.';
       status.style.color = 'var(--danger)';
       return;
     }
@@ -414,7 +471,8 @@ function docsCard(t, kepek) {
     ...VEGPONTOK.map((v) =>
       el('details', { class: 'vegpont' },
         el('summary', {},
-          el('b', {}, v.m),
+          // A metódus színe: zöld GET, sárga PUT, kék POST, piros DELETE.
+          el('b', { class: `m-${v.m.toLowerCase()}` }, v.m),
           el('code', {}, v.ut),
           el('span', {}, v.mit)
         ),

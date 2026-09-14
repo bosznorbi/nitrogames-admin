@@ -125,7 +125,7 @@ publicRouter.post(
   rateLimit({ windowMs: 60000, max: 60, key: (req) => (req.voter ? req.voter.id : req.ip) }),
   (req, res) => {
     if (!getBool('voting_open')) {
-      return res.status(423).json({ error: 'voting_closed', message: 'A szavazás jelenleg zárva.' });
+      return res.status(423).json({ error: 'voting_closed', message: 'A szavazás most zárva van.' });
     }
     const team = db.prepare('SELECT * FROM teams WHERE public_id = ?').get(req.params.publicId);
     if (!team || !team.active) return res.status(404).json({ error: 'team_not_found' });

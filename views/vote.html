@@ -169,7 +169,7 @@ function render() {
 
   if (!data.voting_open) {
     main.append(el('div', { class: 'note warn', style: { marginTop: '18px' } },
-      'A szavazás jelenleg zárva. Nézz vissza, amikor a szervezők megnyitják.'));
+      'A szavazás most zárva van, pontozni nem lehet.'));
     main.append(el('a', { class: 'btn ghost block', href: '/', style: { marginTop: '12px' } }, 'Vissza a főoldalra'));
     return;
   }
