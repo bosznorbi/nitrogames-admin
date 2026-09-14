@@ -20,8 +20,8 @@
     padding: 13px 14px;
     overflow-x: auto;
     font-family: var(--font-display);
-    font-size: 11px;
-    line-height: 1.9;
+    font-size: 13px;
+    line-height: 1.85;
     margin: 0 0 12px;
     white-space: pre;
     color: var(--green);
@@ -47,14 +47,14 @@
     display: grid;
     place-items: center;
     font-family: var(--font-display);
-    font-size: 12px;
+    font-size: 14px;
     background: var(--line);
     color: var(--muted);
   }
 
   .todo-item.ok .todo-mark { background: var(--green); color: #04231a; }
-  .todo-item strong { display: block; font-family: var(--font-display); font-size: 11px; text-transform: uppercase; line-height: 1.6; }
-  .todo-item code { display: block; margin-top: 6px; font-size: 10px; color: var(--muted); word-break: break-all; }
+  .todo-item strong { display: block; font-family: var(--font-display); font-size: 14px; text-transform: uppercase; line-height: 1.55; }
+  .todo-item code { display: block; margin-top: 6px; font-size: 13px; color: var(--muted); word-break: break-all; }
 
   /* Lenyitható végpontok példákkal. */
   .vegpont {
@@ -67,7 +67,7 @@
     cursor: pointer;
     padding: 10px 12px;
     display: grid;
-    grid-template-columns: 58px 1fr;
+    grid-template-columns: 68px 1fr;
     gap: 4px 10px;
     align-items: baseline;
     list-style: none;
@@ -81,16 +81,16 @@
   .vegpont summary b {
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 11px;
+    font-size: 13px;
     color: var(--green);
   }
 
-  .vegpont summary code { font-size: 12px; color: var(--text); word-break: break-all; }
+  .vegpont summary code { font-size: 14px; color: var(--text); word-break: break-all; }
 
   .vegpont summary span {
     grid-column: 2;
     display: block;
-    font-size: 12.5px;
+    font-size: 14px;
     color: var(--muted);
   }
 
@@ -100,14 +100,16 @@
     display: block;
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 10px;
+    font-size: 13px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--cyan);
     margin: 8px 0 5px;
   }
 
-  .preview { display: grid; grid-template-columns: 120px 1fr; gap: 16px; align-items: start; }
+  /* minmax(0, 1fr): a sima 1fr legkisebb merete a tartalom min-content
+     szelessege, es a fajlmezo belso szelessege igy szetfeszitette a racsot. */
+  .preview { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; align-items: start; }
 
   .preview .phone {
     width: 120px;
@@ -117,7 +119,7 @@
     display: grid;
     place-items: center;
     color: #55627a;
-    font-size: 11px;
+    font-size: 12px;
     text-align: center;
     padding: 9px;
   }
@@ -131,11 +133,11 @@
     place-items: center;
     color: var(--muted);
     font-family: var(--font-display);
-    font-size: 10px;
+    font-size: 12px;
     text-transform: uppercase;
   }
 
-  @media (max-width: 600px) { .preview { grid-template-columns: 1fr; } }
+  @media (max-width: 600px) { .preview { grid-template-columns: minmax(0, 1fr); } }
 </style>
 </head>
 <body>
@@ -160,7 +162,7 @@
     <div class="card">
       <label class="field">
         <span>Kód a papírról</span>
-        <input type="text" id="code" class="code-input" style="font-size:20px;letter-spacing:0.18em;text-indent:0.18em"
+        <input type="text" id="code" class="code-input" style="font-size:24px;letter-spacing:0.18em;text-indent:0.18em"
                placeholder="ABCD-1234" maxlength="9" autocapitalize="characters" autocorrect="off" spellcheck="false">
       </label>
       <button class="btn block" id="connect">Csatlakozás</button>

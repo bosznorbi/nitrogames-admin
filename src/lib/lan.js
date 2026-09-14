@@ -27,25 +27,49 @@ export function localIps() {
  * talalgatni a virtualis adapterek kozott. Csomagot nem kuldunk, csak
  * utvonalat valasztatunk az operacios rendszerrel.
  */
-export async function detectLanIp() {
-  const kimeno = await new Promise((resolve) => {
+function kimenoCim(cel) {
+  return new Promise((resolve) => {
     const sock = dgram.createSocket('udp4');
+    let kesz = false;
     const done = (value) => {
+      if (kesz) return;
+      kesz = true;
       try { sock.close(); } catch {}
       resolve(value);
     };
     sock.on('error', () => done(null));
     try {
-      sock.connect(53, '8.8.8.8', () => done(sock.address().address));
+      sock.connect(53, cel, () => {
+        try { done(sock.address().address); } catch { done(null); }
+      });
     } catch {
       done(null);
     }
-    setTimeout(() => done(null), 800);
+    setTimeout(() => done(null), 1500);
   });
+}
 
+export async function detectLanIp() {
+  // Ket celt probalunk: hotspoton vagy szurt halozaton az egyik cim elerhetetlen
+  // lehet, olyankor a masik valasztja ki a helyes interfeszt.
+  let kimeno = await kimenoCim('8.8.8.8');
+  if (!kimeno) kimeno = await kimenoCim('1.1.1.1');
+
+  // A friss interfesz-lista donti el, hogy a talalt cim tenyleg letezik-e most:
+  // wifiváltás utan a regi cim mar nem szerepel benne.
   const cimek = localIps();
   const valid = kimeno && cimek.some((a) => a.ip === kimeno);
   cache = valid ? kimeno : (cimek[0] ? cimek[0].ip : null);
+  return cache;
+}
+
+/**
+ * Kezi felulbiralas: ha az automatikus valasztas melle nyul, a listabol
+ * barmelyik valodi cim beallithato. Ismeretlen cimet nem fogadunk el.
+ */
+export function setLanIp(ip) {
+  if (!localIps().some((a) => a.ip === ip)) return null;
+  cache = ip;
   return cache;
 }
 

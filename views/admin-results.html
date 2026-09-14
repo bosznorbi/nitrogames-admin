@@ -16,14 +16,17 @@
   .szinpad {
     height: 100dvh;
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    gap: 1.6vh;
+    /* fejléc, kategóriasor, dobogó, mezőny */
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: 1.4vh;
     padding: 2vh 2.4vw 2.4vh;
   }
 
   .fejlec { display: flex; align-items: center; justify-content: space-between; gap: 2vw; }
   .fejlec .cim { display: flex; align-items: center; gap: 1.2vw; }
   .fejlec img { height: 4.4vh; width: auto; display: block; }
+
+  .fejlec .mini { font-size: clamp(12px, 1.8vh, 17px); padding: 0.9vh 1vw; }
 
   .fejlec h1 {
     margin: 0;
@@ -32,7 +35,7 @@
     color: var(--text);
   }
 
-  .fejlec .sub { font-size: clamp(10px, 1.6vh, 15px); color: var(--muted); }
+  .fejlec .sub { font-size: clamp(12px, 2vh, 20px); color: var(--muted); }
 
   /* ---------- dobogó ---------- */
 
@@ -51,7 +54,7 @@
     font-family: var(--font-display);
     font-weight: 700;
     letter-spacing: 0.1em;
-    font-size: clamp(10px, 1.7vh, 16px);
+    font-size: clamp(12px, 2.1vh, 22px);
     color: var(--muted);
   }
 
@@ -61,7 +64,8 @@
     background: linear-gradient(180deg, var(--panel-2), var(--panel));
     display: grid;
     place-items: center;
-    font-family: var(--font-display);
+    /* A lépcsők száma a lap legnagyobb számjegye: itt a vastag vágat kell. */
+    font-family: 'Nitro szam vastag', var(--font-display);
     font-weight: 700;
     font-size: clamp(22px, 6vh, 64px);
     color: var(--muted);
@@ -117,17 +121,34 @@
   .csapat.felfedve {
     border-color: var(--team, var(--cyan));
     background: color-mix(in srgb, var(--team, var(--cyan)) 14%, var(--panel));
-    animation: felfed 0.5s steps(5);
   }
+
+  /* Csak az a kártya villan fel, amelyiket épp most fedték fel. A többi
+     felfedett már nyugton marad, akkor is, ha a lista újrarajzolódik. */
+  .csapat.felfedve.uj { animation: felfed 0.5s steps(5); }
 
   @keyframes felfed {
     0% { transform: scale(0.9); filter: brightness(2.4); }
     100% { transform: scale(1); filter: none; }
   }
 
+  /*
+   * A tűzijáték a dobogó fölött szól, de nem fogja el a kattintást.
+   * A width/height kell: a canvas cserélt elem, annak az inset: 0 nem szabja
+   * meg a méretét, hanem a saját belső felbontását venné CSS-méretnek.
+   */
+  #tuzijatek {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 40;
+    pointer-events: none;
+  }
+
   .megosztott {
     text-align: center;
-    font-size: clamp(9px, 1.4vh, 13px);
+    font-size: clamp(11px, 1.8vh, 18px);
     color: var(--amber);
     font-family: var(--font-display);
     font-weight: 700;
@@ -156,7 +177,7 @@
   .mezony .csapat .nev {
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: clamp(10px, 1.8vh, 18px);
+    font-size: clamp(12px, 2.2vh, 22px);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -165,7 +186,7 @@
   .mezony .csapat .pont {
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: clamp(11px, 1.8vh, 18px);
+    font-size: clamp(12px, 2.2vh, 22px);
     color: var(--amber);
   }
 
@@ -175,54 +196,73 @@
     font-family: var(--font-display);
     font-weight: 700;
     color: var(--muted);
-    font-size: clamp(10px, 1.7vh, 17px);
+    font-size: clamp(12px, 2.1vh, 21px);
   }
 
-  /* ---------- kategóriák ---------- */
+  /* ---------- kategóriagyőztesek ---------- */
 
-  #kategoriak {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-    background: rgba(3, 6, 12, 0.95);
+  /*
+   * Egy sorban, a dobogó fölött, végig a helyén: így a dobogó nem ugrik el,
+   * amikor felfedik őket. Kezdetben csak a kategória neve és a takart név
+   * látszik.
+   */
+  .kat-sor {
     display: grid;
-    place-items: center;
-    padding: 4vh 4vw;
+    grid-template-columns: repeat(var(--oszlop, 5), minmax(0, 1fr));
+    gap: 0.9vw;
   }
 
-  #kategoriak[hidden] { display: none; }
-
-  .kat-racs {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1.4vh 1.4vw;
-    max-width: 1100px;
-    width: 100%;
-  }
+  .kat-sor[hidden] { display: none; }
 
   .kat {
     border: 3px solid var(--line);
+    border-top: 5px solid var(--team, var(--line-lit));
     background: var(--panel);
-    box-shadow: 4px 4px 0 var(--shadow);
-    padding: 1.4vh 1vw;
+    box-shadow: 3px 3px 0 var(--shadow);
+    padding: 0.9vh 0.8vw;
+    min-width: 0;
+    cursor: pointer;
   }
+
+  .kat.rejtve:hover { border-color: var(--cyan); }
+  .kat.rejtve b { color: #35507a; letter-spacing: 0.05em; }
+
+  .kat.felfedve {
+    border-color: var(--team, var(--cyan));
+    background: color-mix(in srgb, var(--team, var(--cyan)) 12%, var(--panel));
+  }
+
+  /* Ugyanaz a szabály, mint a dobogón: csak az villan, amire kattintottak. */
+  .kat.felfedve.uj { animation: felfed 0.5s steps(5); }
 
   .kat small {
     display: block;
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: clamp(9px, 1.4vh, 13px);
+    font-size: clamp(9px, 1.4vh, 14px);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--cyan);
-    margin-bottom: 0.6vh;
+    margin-bottom: 0.3vh;
   }
 
-  .kat b { font-family: var(--font-display); font-weight: 700; font-size: clamp(12px, 2vh, 20px); }
-  .kat span { display: block; font-size: clamp(9px, 1.4vh, 13px); color: var(--muted); margin-top: 0.3vh; }
+  .kat b {
+    display: block;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(12px, 1.9vh, 20px);
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .kat span { display: block; font-size: clamp(10px, 1.5vh, 15px); color: var(--muted); }
 </style>
 </head>
 <body>
+
+<canvas id="tuzijatek"></canvas>
 
 <div class="szinpad">
   <div class="fejlec">
@@ -234,22 +274,14 @@
       </div>
     </div>
     <div class="row tight">
-      <button class="mini" id="mindet">Mindet felfedi</button>
-      <button class="mini" id="ujra">Újra elrejt</button>
-      <button class="mini" id="katGomb">Kategóriák</button>
+      <button class="mini" id="mindet">Mindent felfed</button>
+      <button class="mini" id="ujra">Mindent elrejt</button>
     </div>
   </div>
 
+  <div class="kat-sor" id="katSor" hidden></div>
   <div class="dobogo" id="dobogo"></div>
   <div class="mezony" id="mezony"></div>
-</div>
-
-<div id="kategoriak" hidden>
-  <div>
-    <h1 style="text-align:center;margin:0 0 2vh;font-size:clamp(16px,3vh,30px)">Kategóriagyőztesek</h1>
-    <div class="kat-racs" id="katRacs"></div>
-    <p class="center small muted" style="margin-top:2vh">Koppints bárhová a bezáráshoz</p>
-  </div>
 </div>
 
 <script type="module">
@@ -257,11 +289,19 @@ import { api, el, toast } from '/static/js/app.js';
 
 const $ = (id) => document.getElementById(id);
 const TAKART = '████████';
+const KAT_TAKART = '██████';
 const felfedve = new Set();
+const felfedettKat = new Set();
 let adat = null;
+
+// Az épp most felfedett csapat, illetve kategória. Csak ez villan fel, a többi
+// felfedett nem, és a 15 másodperces frissítés sem indítja újra az animációt.
+let frissenFelfedve = null;
+let frissenKat = null;
 
 function csapatKartya(t, { sorszam = null } = {}) {
   const nyitva = felfedve.has(t.team_id);
+  const uj = nyitva && t.team_id === frissenFelfedve;
   const gyerekek = [
     el('div', { class: 'nev' }, nyitva ? t.label : TAKART),
     el('div', { class: 'pont' }, t.total_pct === null ? '-' : String(t.total_pct)),
@@ -269,12 +309,16 @@ function csapatKartya(t, { sorszam = null } = {}) {
   if (sorszam !== null) gyerekek.unshift(el('span', { class: 'sorszam' }, `${sorszam}.`));
 
   return el('div', {
-    class: `csapat ${nyitva ? 'felfedve' : 'rejtve'}`,
+    class: `csapat ${nyitva ? 'felfedve' : 'rejtve'} ${uj ? 'uj' : ''}`,
     style: { '--team': nyitva ? t.accent_color : 'transparent' },
     title: nyitva ? '' : 'Kattints a felfedéshez',
+    dataset: { team: String(t.team_id) },
     onclick: () => {
-      felfedve.has(t.team_id) ? felfedve.delete(t.team_id) : felfedve.add(t.team_id);
+      const most = !felfedve.has(t.team_id);
+      most ? felfedve.add(t.team_id) : felfedve.delete(t.team_id);
+      frissenFelfedve = most ? t.team_id : null;
       rajzol();
+      if (most) tuzijatekotInditsd(t);
     },
   }, ...gyerekek);
 }
@@ -289,6 +333,123 @@ function oszlop(hely, cimke, csapatok) {
     el('div', { class: 'talp' }, String(hely))
   );
 }
+
+/* ---------- tűzijáték ---------- */
+
+/*
+ * Négyzetes részecskék, nincs elmosás: ugyanaz a pixeles nyelv, mint a lap
+ * többi részén. A dobogósoknak szól, a győztesnek a legnagyobb.
+ */
+const vaszon = $('tuzijatek');
+const ctx = vaszon.getContext('2d');
+let reszecskek = [];
+let fut = false;
+const nyugodtMod = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function vaszontMeretezd() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  vaszon.width = Math.round(innerWidth * dpr);
+  vaszon.height = Math.round(innerHeight * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+vaszontMeretezd();
+addEventListener('resize', vaszontMeretezd);
+
+function robbanas(x, y, { darab, ero, meret, szinek }) {
+  for (let i = 0; i < darab; i++) {
+    const szog = Math.random() * Math.PI * 2;
+    // Gyűrűs eloszlás: a szélén sűrűbb, így valódi robbanásnak látszik.
+    const seb = ero * (0.45 + Math.random() * 0.55);
+    reszecskek.push({
+      x,
+      y,
+      vx: Math.cos(szog) * seb,
+      vy: Math.sin(szog) * seb,
+      elet: 1,
+      fogyas: 0.008 + Math.random() * 0.012,
+      meret: meret * (0.6 + Math.random() * 0.8),
+      szin: szinek[Math.floor(Math.random() * szinek.length)],
+    });
+  }
+}
+
+function lepes() {
+  ctx.clearRect(0, 0, innerWidth, innerHeight);
+
+  for (const p of reszecskek) {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.12;      // gravitáció
+    p.vx *= 0.985;     // légellenállás
+    p.vy *= 0.985;
+    p.elet -= p.fogyas;
+  }
+  reszecskek = reszecskek.filter((p) => p.elet > 0);
+
+  for (const p of reszecskek) {
+    // Lépcsős áttetszőség: a halványodás is pixeles, nem folytonos.
+    ctx.globalAlpha = Math.ceil(p.elet * 6) / 6;
+    ctx.fillStyle = p.szin;
+    const m = Math.max(2, Math.round(p.meret));
+    ctx.fillRect(Math.round(p.x), Math.round(p.y), m, m);
+  }
+  ctx.globalAlpha = 1;
+
+  if (reszecskek.length) {
+    requestAnimationFrame(lepes);
+  } else {
+    fut = false;
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+  }
+}
+
+function inditsdALepest() {
+  if (fut) return;
+  fut = true;
+  requestAnimationFrame(lepes);
+}
+
+/** A felfedett csapat kártyájának közepe a képernyőn. */
+function kartyaKozepe(teamId) {
+  const node = document.querySelector(`.dobogo .csapat[data-team="${CSS.escape(String(teamId))}"]`);
+  if (!node) return null;
+  const r = node.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}
+
+function tuzijatekotInditsd(t) {
+  if (nyugodtMod || t.rank === null || t.rank > 3) return;
+
+  // A rajzolás után mérünk, hogy a friss elrendezés szerinti helyre lőjünk.
+  requestAnimationFrame(() => {
+    const kp = kartyaKozepe(t.team_id);
+    if (!kp) return;
+
+    const szinek = [t.accent_color || '#2ee8ff', '#ffc83d', '#ffffff', '#2ee8ff'];
+    const elso = t.rank === 1;
+    const alap = elso
+      ? { darab: 150, ero: 9, meret: 7 }
+      : { darab: 70, ero: 6, meret: 5 };
+
+    robbanas(kp.x, kp.y, { ...alap, szinek });
+    inditsdALepest();
+
+    // A győztesnek több utóraketta, szétszórva a kártya körül.
+    const utanpotlas = elso ? [[140, -70, 120], [300, 80, 60], [460, -40, 110], [620, 60, 80]] : [[180, 0, 40]];
+    for (const [keses, dx, dy] of utanpotlas) {
+      setTimeout(() => {
+        robbanas(kp.x + dx + (Math.random() - 0.5) * 120, kp.y + dy - Math.random() * 80, {
+          ...alap,
+          darab: Math.round(alap.darab * 0.6),
+          szinek,
+        });
+        inditsdALepest();
+      }, keses);
+    }
+  });
+}
+
+/* ---------- rajzolás ---------- */
 
 function rajzol() {
   const helyek = new Map();
@@ -315,45 +476,82 @@ function rajzol() {
   $('mezony').replaceChildren(
     ...tobbi.map(([hely, t]) => csapatKartya(t, { sorszam: hely }))
   );
+
+  kategoriakat();
+
+  // A jelölés egyszer használatos: a következő rajzoláskor már senki sem villan.
+  frissenFelfedve = null;
+  frissenKat = null;
+}
+
+/**
+ * A kategóriagyőztesek a dobogó fölött, egy sorban. A sor a kezdetektől ott
+ * van, hogy a dobogó ne ugráljon: csak a helyek látszanak, a neveket
+ * egyesével kell felkattintani.
+ */
+function katKartya(w, szinek) {
+  const nyitva = felfedettKat.has(w.key);
+  const uj = nyitva && w.key === frissenKat;
+  const szin = (w.winner && szinek.get(w.winner.team_id)) || 'var(--cyan)';
+
+  return el('div', {
+    class: `kat ${nyitva ? 'felfedve' : 'rejtve'} ${uj ? 'uj' : ''}`,
+    style: { '--team': nyitva ? szin : 'transparent' },
+    title: nyitva ? '' : 'Kattints a felfedéshez',
+    onclick: () => {
+      const most = !felfedettKat.has(w.key);
+      most ? felfedettKat.add(w.key) : felfedettKat.delete(w.key);
+      frissenKat = most ? w.key : null;
+      rajzol();
+    },
+  },
+    el('small', {}, w.label),
+    w.winner
+      ? el('div', {},
+          el('b', {}, nyitva ? w.winner.label : KAT_TAKART),
+          el('span', {}, `átlag ${w.winner.avg}`))
+      : el('span', {}, 'Még nincs szavazat')
+  );
+}
+
+function kategoriakat() {
+  const sor = $('katSor');
+  const gyoztesek = adat.category_winners || [];
+
+  if (!gyoztesek.length) {
+    sor.hidden = true;
+    sor.replaceChildren();
+    return;
+  }
+
+  const szinek = new Map(adat.ranking.map((t) => [t.team_id, t.accent_color]));
+  sor.style.setProperty('--oszlop', String(gyoztesek.length));
+  sor.replaceChildren(...gyoztesek.map((w) => katKartya(w, szinek)));
+  sor.hidden = false;
 }
 
 async function betolt() {
   adat = await api('/api/admin/results');
   const s = adat.stats;
+  // A ki nem osztott cetlik senkihez sem tartoznak, ezért a belépettekhez
+  // mérünk, nem a kinyomtatott mennyiséghez.
   $('sub').textContent =
-    `${s.voters_voted} / ${s.voters_total} szavazó · ${s.submissions} szavazólap · `
+    `${s.voters_voted} / ${s.voters_activated} belépett szavazó · ${s.submissions} szavazólap · `
     + (s.voting_open ? 'a szavazás még nyitva' : 'a szavazás lezárva');
   rajzol();
 }
 
 $('mindet').addEventListener('click', () => {
   adat.ranking.forEach((t) => felfedve.add(t.team_id));
+  (adat.category_winners || []).forEach((w) => felfedettKat.add(w.key));
   rajzol();
 });
 
 $('ujra').addEventListener('click', () => {
   felfedve.clear();
+  felfedettKat.clear();
   rajzol();
 });
-
-$('katGomb').addEventListener('click', () => {
-  $('katRacs').replaceChildren(
-    ...adat.category_winners.map((w) =>
-      el('div', { class: 'kat' },
-        el('small', {}, w.label),
-        w.winner
-          ? el('div', {},
-              el('b', {}, w.winner.label),
-              el('span', {}, `${w.winner.number}. csapat · átlag ${w.winner.avg}`))
-          : el('span', {}, 'Még nincs szavazat')
-      )
-    )
-  );
-  $('kategoriak').hidden = false;
-});
-
-$('kategoriak').addEventListener('click', () => { $('kategoriak').hidden = true; });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('kategoriak').hidden = true; });
 
 betolt().catch((err) => {
   if (err.status === 401) location.href = '/admin/login';

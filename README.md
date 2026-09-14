@@ -60,9 +60,9 @@ Első lépések az admin felületen (<http://localhost:3000/admin>):
 4. **Áttekintés** fül: nyisd meg a két PDF-et, és nyomtasd ki.
 5. Amikor kezdődik a szavazás, kapcsold be a **Szavazás nyitva** kapcsolót.
 
-### A TESZT kód
+### A TEST kód
 
-Mindig létezik egy `TESZT` nevű szavazó, mintha ki lenne nyomtatva. A
+Mindig létezik egy `TEST` nevű szavazó, mintha ki lenne nyomtatva. A
 belépő oldalon (`/belepes`) beírva bármikor kipróbálhatod a szavazói oldalt.
 Törölni nem lehet, a teljes nullázást is túléli.
 
@@ -88,6 +88,13 @@ npm run lan    # kiírja a telefonról elérhető címet és QR kódot rajzol a 
 npm test       # végigmegy a teljes folyamaton egy futó szerver ellen
 npm run demo -- --igen --arany 80   # véletlen DEMO szavazatok próbához
 ```
+
+Ugyanez kattintásra: az admin **Áttekintés** fülén, a **Danger zone** dobozban a
+**Mintaadatok generálása** gomb kitölti a csapatokat (név, játék, mottó, leírás,
+háttér- és csempekép), legenerálja a szavazatokat, és megnyitja a szavazást. A
+`TEST` cetli szavazatai szándékosan üresek maradnak, azzal telefonról végig
+lehet próbálni a szavazást a kész adatokon. A csapatkódokat és a QR-kódokat ez
+sem írja felül.
 
 ## Tesztelés telefonról
 
@@ -166,6 +173,11 @@ minden deploy törli az összes csapatot, szavazót és szavazatot.
 
 A service **Settings → Volumes → Add Volume**, a mount path legyen `/data`.
 
+Az ingyenes csomagokon is lehet volume, 0.5 GB-ig. Ez bőven elég: az
+adatbázis pár MB, a 9 háttérkép és csempekép együtt jellemzően 20-50 MB.
+A Trial 1 GB RAM-ot ad, a Free 0.5 GB-ot; az app 100-150 MB körül jár, tehát
+mindkettőn elfut.
+
 ### 4. Környezeti változók
 
 | Változó | Érték |
@@ -175,6 +187,7 @@ A service **Settings → Volumes → Add Volume**, a mount path legyen `/data`.
 | `NODE_ENV` | `production` |
 | `SESSION_SECRET` | hosszú véletlen string |
 | `PUBLIC_BASE_URL` | a Railway domain, miután megvan |
+| `STARTER_REPO_URL` | a csapatok segédanyaga, ha nem az alapértelmezett |
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
@@ -212,10 +225,10 @@ ezért érdemes a csapatoknak tömörített képet feltölteni.
 
 ## Az esemény menete
 
-> **A nullázás nem érinti a kinyomtatott lapokat.** Sem a csapatkódok, sem a
-> szavazólapok QR-kódjai, sem a szavazói cetlik nem változnak tőle. Csak a
-> szavazatok, és teljes nullázásnál a csapatok által feltöltött tartalom
-> (nevek, leírások, képek) törlődik.
+> **A Danger zone műveletei nem érintik a kinyomtatott lapokat.** Sem a
+> csapatkódok, sem a szavazólapok QR-kódjai, sem a szavazói cetlik nem
+> változnak tőlük. Csak a szavazatok, teljes törlésnél pedig a csapatok által
+> feltöltött tartalom (nevek, leírások, képek) tűnik el.
 
 **Előtte**
 

@@ -3,6 +3,37 @@
    Pixelfontok helyben, kemény árnyék, nulla lekerekítés, scanline.
    ============================================================ */
 
+/*
+ * A Pixelify Sans számjegyei nehezen olvashatók: a 2 Z-nek, az 5 S-nek, a 7
+ * 1-nek látszik. Ezért CSAK a számokat (és a közéjük eső írásjeleket) a
+ * Silkscreenből vesszük: ugyanaz a pixeles nyelv, de a számai egyértelműek.
+ * A unicode-range miatt minden más betű marad Pixelify.
+ *
+ * A size-adjust a két font számmagasságát hozza fedésbe (65 vs 63 egység).
+ * A félkövérhez is a 400-as vágat megy: a Silkscreen bold számai másfélszer
+ * olyan szélesek lennének, az szétfeszítené a táblázatokat.
+ */
+@font-face {
+  font-family: 'Nitro szam';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  size-adjust: 103%;
+  src: url('/static/fonts/silkscreen-400-latin.woff2') format('woff2');
+  unicode-range: U+0030-0039, U+002E, U+002F, U+003A, U+0025;
+}
+
+/* Ahol a szám a főszereplő és van hely (dobogó lépcsői), ott a vastag vágat. */
+@font-face {
+  font-family: 'Nitro szam vastag';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  size-adjust: 103%;
+  src: url('/static/fonts/silkscreen-700-latin.woff2') format('woff2');
+  unicode-range: U+0030-0039, U+002E, U+002F, U+003A, U+0025;
+}
+
 @font-face {
   font-family: 'Pixelify Sans';
   font-style: normal;
@@ -54,8 +85,10 @@
    * félkövérré sem lehetett tenni őket. A Pixelify Sans mindkettőt tudja,
    * mindkét súlyban. A feliratos hatást a vastagság és a betűköz adja.
    */
-  --font-display: 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
-  --font-body: 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
+  /* A 'Nitro szam' elöl áll, de csak a számjegyeket fedi le: minden más
+     karakternél a böngésző továbblép a Pixelify Sansra. */
+  --font-display: 'Nitro szam', 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
+  --font-body: 'Nitro szam', 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -72,8 +105,8 @@ body {
   background-size: 32px 32px, 32px 32px;
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 16px;
-  line-height: 1.55;
+  font-size: 18px;
+  line-height: 1.5;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
 }
@@ -114,7 +147,7 @@ a { color: var(--cyan); }
 }
 
 .topbar.compact { padding: 8px 16px 4px; }
-.topbar.compact .brand { font-size: 13px; }
+.topbar.compact .brand { font-size: 15px; }
 .wrap.tight-top { padding-top: 6px; }
 
 .brand {
@@ -123,7 +156,9 @@ a { color: var(--cyan); }
   gap: 10px;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 15px;
+  font-size: 17px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   text-decoration: none;
   color: var(--text);
 }
@@ -143,16 +178,16 @@ h1, h2, h3 {
 }
 
 h1 {
-  font-size: 21px;
+  font-size: 24px;
   margin: 8px 0 12px;
   text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.65);
 }
 
-h2 { font-size: 13px; margin: 26px 0 12px; color: var(--cyan); }
+h2 { font-size: 16px; margin: 26px 0 12px; color: var(--cyan); }
 
 .lead { color: var(--muted); margin: 0 0 20px; }
 .muted { color: var(--muted); }
-.small { font-size: 13px; }
+.small { font-size: 15px; }
 .center { text-align: center; }
 
 code, .mono { font-family: var(--font-display); letter-spacing: 0.04em; }
@@ -189,7 +224,7 @@ label.field > span, .toast, .big-check, .tile-art, .hero-sub {
   background: var(--accent);
   color: var(--accent-ink);
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   text-transform: uppercase;
   cursor: pointer;
@@ -198,6 +233,10 @@ label.field > span, .toast, .big-check, .tile-art, .hero-sub {
   transition: transform 0.06s steps(2), box-shadow 0.06s steps(2);
 }
 
+/* A gombok eddig csak lenyomasra reagaltak: egy vilagosabb arnyalat es egy
+   kicsit megemelt arnyek jelzi, hogy ez tenyleg kattinthato. */
+.btn:hover { background: color-mix(in srgb, var(--accent) 82%, #fff); }
+.btn:focus-visible { outline: 3px solid var(--text); outline-offset: 3px; }
 .btn:active { transform: translate(var(--px), var(--px)); box-shadow: 0 0 0 var(--shadow); }
 
 .btn[disabled] {
@@ -209,23 +248,29 @@ label.field > span, .toast, .big-check, .tile-art, .hero-sub {
 
 .btn.block { width: 100%; }
 .btn.ghost { background: var(--panel-2); border-color: var(--line-lit); color: var(--text); }
+.btn.ghost:hover { background: #1b2b46; border-color: var(--cyan); color: var(--cyan); }
+
+/* Az --accent átírásával a hover képlete magától követi az új színt. */
+.btn.warn { --accent: var(--amber); --accent-ink: #2a1c00; }
+.btn[disabled]:hover { background: var(--panel-2); }
 
 .btn.quiet {
   background: transparent;
   border-color: transparent;
   box-shadow: none;
   color: var(--muted);
-  min-height: 40px;
-  font-size: 11px;
+  min-height: 42px;
+  font-size: 14px;
 }
 
+.btn.quiet:hover { color: var(--text); background: rgba(46, 232, 255, 0.1); }
 .btn.quiet:active { transform: none; }
 
 .back {
   display: inline-grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
   flex: 0 0 auto;
   border: 3px solid var(--line-lit);
   background: var(--panel-2);
@@ -237,16 +282,17 @@ label.field > span, .toast, .big-check, .tile-art, .hero-sub {
   padding: 0;
 }
 
+.back:hover { border-color: var(--cyan); color: var(--cyan); background: #1b2b46; }
 .back:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--shadow); }
-.back svg { width: 18px; height: 18px; display: block; }
+.back svg { width: 21px; height: 21px; display: block; }
 
 /* Kis, másodlagos gomb. Több oldal használja, ezért itt van, nem az adminban. */
 .mini {
   appearance: none;
   font-family: var(--font-display);
-  font-size: 10px;
+  font-size: 13px;
   text-transform: uppercase;
-  padding: 8px 11px;
+  padding: 9px 13px;
   border: 3px solid var(--line-lit);
   background: var(--panel-2);
   color: var(--text);
@@ -257,9 +303,20 @@ label.field > span, .toast, .big-check, .tile-art, .hero-sub {
   box-shadow: 3px 3px 0 var(--shadow);
 }
 
+.mini { transition: background-color 0.08s steps(2), color 0.08s steps(2); }
 .mini:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--shadow); }
-.mini:hover { border-color: var(--cyan); }
+.mini:hover { border-color: var(--cyan); color: var(--cyan); background: #1b2b46; }
+.mini:focus-visible { outline: 3px solid var(--text); outline-offset: 3px; }
+
 .mini.danger { color: var(--danger); border-color: var(--danger); }
+.mini.danger:hover { background: rgba(255, 84, 112, 0.18); color: #ffd3da; border-color: var(--danger); }
+
+/* Nem romboló művelet a danger zone-ban: zölddel válik el a törlőktől. */
+.mini.ok { color: var(--green); border-color: var(--green); }
+.mini.ok:hover { background: rgba(61, 255, 158, 0.16); color: #d6ffec; border-color: var(--green); }
+
+.mini[disabled] { opacity: 0.5; cursor: progress; }
+.mini[disabled]:hover { background: var(--panel-2); color: var(--muted); border-color: var(--line-lit); }
 
 
 /* ---------- űrlapok ---------- */
@@ -269,7 +326,7 @@ label.field { display: block; margin-bottom: 16px; }
 label.field > span {
   display: block;
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 13px;
   text-transform: uppercase;
   color: var(--cyan);
   margin-bottom: 7px;
@@ -285,7 +342,7 @@ textarea,
 select {
   width: 100%;
   font-family: var(--font-body);
-  font-size: 16px;
+  font-size: 17px;
   color: var(--text);
   background: #05090f;
   border: 3px solid var(--line-lit);
@@ -298,15 +355,15 @@ input:focus, textarea:focus, select:focus { border-color: var(--cyan); }
 
 textarea { resize: vertical; min-height: 84px; }
 
-input[type='file'] { font-family: var(--font-body); font-size: 13px; color: var(--muted); }
+input[type='file'] { font-family: var(--font-body); font-size: 15px; color: var(--muted); max-width: 100%; }
 input[type='color'] { padding: 3px; background: #05090f; border: 3px solid var(--line-lit); }
 
 .code-input {
   font-family: var(--font-display) !important;
   text-align: center;
   text-transform: uppercase;
-  font-size: 26px;
-  padding: 14px 10px;
+  font-size: 30px;
+  padding: 16px 10px;
   letter-spacing: 0.22em;
   /* A betűköz a legutolsó karakter után is megjelenik: ez visszaközepezi. */
   text-indent: 0.22em;
@@ -319,8 +376,8 @@ input[type='color'] { padding: 3px; background: #05090f; border: 3px solid var(-
 .note {
   border: 3px solid var(--line);
   background: var(--panel-2);
-  padding: 12px 14px;
-  font-size: 14px;
+  padding: 13px 15px;
+  font-size: 16px;
 }
 
 .note.err { border-color: var(--danger); background: rgba(255, 84, 112, 0.14); }
@@ -331,7 +388,7 @@ input[type='color'] { padding: 3px; background: #05090f; border: 3px solid var(-
 .pill {
   display: inline-block;
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 13px;
   text-transform: uppercase;
   padding: 5px 9px;
   border: 2px solid var(--line-lit);
@@ -405,7 +462,7 @@ a.tile:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--shadow);
 .tile-name {
   --sorok: 2;
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.25;
   height: calc(var(--sorok) * 1.25em);
   color: var(--muted);
@@ -414,6 +471,16 @@ a.tile:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--shadow);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+/*
+ * Alacsony telefonokon (iPhone SE) a rács pár képpontot túllógna. Ott a csempe
+ * neve marad a régi méretben, hogy a kilenc játék görgetés nélkül elférjen.
+ */
+@media (max-height: 700px) {
+  .tile-name { font-size: 11px; }
+  .tiles { gap: 6px; }
+  .wrap { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
 }
 
 .tile.done { border-color: var(--green); background: var(--panel-2); }
@@ -494,13 +561,13 @@ a.tile:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--shadow);
   font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: 0.06em;
-  font-size: 17px;
+  font-size: 20px;
   text-transform: uppercase;
   color: var(--green);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
-.welcome-box span { font-size: 14px; color: var(--muted); }
+.welcome-box span { font-size: 16px; color: var(--muted); }
 
 @keyframes welcome-in {
   0% { transform: scale(0.7); opacity: 0; }
@@ -515,11 +582,13 @@ a.tile:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--shadow);
   margin: 0 0 7px;
 }
 
-.progress-ring b { font-family: var(--font-display); font-size: 21px; color: var(--amber); }
-.progress-ring span { font-family: var(--font-display); font-size: 11px; color: var(--muted); text-transform: uppercase; }
+.progress-ring b { font-family: var(--font-display); font-size: 24px; color: var(--amber); }
+.progress-ring span { font-family: var(--font-display); font-size: 13px; color: var(--muted); text-transform: uppercase; }
 
+/* border-box mellett a 10px magassagbol a keret es a belso tér nem hagyott
+   helyet a kitoltesnek, ezert a sav mindig uresnek latszott. */
 .bar {
-  height: 10px;
+  height: 18px;
   background: #05090f;
   border: 3px solid var(--line);
   padding: 2px;
@@ -574,11 +643,11 @@ body.has-bg .note { background: rgba(8, 13, 22, 0.88); }
   padding: 20px 0 8px;
 }
 
-.stage h1 { margin: 0 0 6px; font-size: 26px; text-transform: none; text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.85); }
+.stage h1 { margin: 0 0 8px; font-size: 30px; text-transform: none; text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.85); }
 
 .stage .hero-sub {
   font-family: var(--font-display);
-  font-size: 12px;
+  font-size: 15px;
   color: rgba(255, 255, 255, 0.85);
   margin: 0;
   text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.85);
@@ -597,10 +666,10 @@ body.has-bg .note { background: rgba(8, 13, 22, 0.88); }
   box-shadow: var(--px) var(--px) 0 var(--shadow);
 }
 
-.hero.plain h1 { margin: 0 0 6px; font-size: 22px; text-transform: none; color: #0b1220; text-shadow: none; }
+.hero.plain h1 { margin: 0 0 8px; font-size: 25px; text-transform: none; color: #0b1220; text-shadow: none; }
 .hero.plain .hero-sub {
   color: #55627a;
-  font-size: 12px;
+  font-size: 15px;
   font-family: var(--font-display);
   margin: 0;
 }
@@ -608,9 +677,9 @@ body.has-bg .note { background: rgba(8, 13, 22, 0.88); }
 .chip {
   display: inline-block;
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 13px;
   text-transform: uppercase;
-  padding: 6px 10px;
+  padding: 7px 12px;
   background: var(--team, var(--accent));
   color: #04121c;
   border: 2px solid #000;
@@ -633,9 +702,9 @@ body.has-bg .note { background: rgba(8, 13, 22, 0.88); }
   margin-bottom: 5px;
 }
 
-.criterion-label { font-family: var(--font-display); font-size: 12px; text-transform: uppercase; }
-.criterion-value { font-family: var(--font-display); font-size: 12px; color: var(--team, var(--accent)); }
-.criterion-desc { font-size: 13.5px; color: var(--muted); margin: 0 0 12px; }
+.criterion-label { font-family: var(--font-display); font-size: 16px; text-transform: uppercase; }
+.criterion-value { font-family: var(--font-display); font-size: 15px; color: var(--team, var(--accent)); }
+.criterion-desc { font-size: 15.5px; color: var(--muted); margin: 0 0 14px; line-height: 1.45; }
 
 .scale {
   display: grid;
@@ -651,9 +720,9 @@ body.has-bg .note { background: rgba(8, 13, 22, 0.88); }
   border: 3px solid var(--line-lit);
   background: #05090f;
   color: var(--muted);
-  min-height: 50px;
+  min-height: 54px;
   font-family: var(--font-display);
-  font-size: 14px;
+  font-size: 18px;
   cursor: pointer;
   box-shadow: 3px 3px 0 var(--shadow);
   transition: transform 0.05s steps(2), box-shadow 0.05s steps(2);
@@ -662,14 +731,14 @@ body.has-bg .note { background: rgba(8, 13, 22, 0.88); }
 .pip:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--shadow); }
 
 /* Négyfokozatú skála: arcok szám helyett. */
-.scale.faces .pip { min-height: 62px; padding: 6px; }
+.scale.faces .pip { min-height: 68px; padding: 7px; }
 
 .arc { display: block; }
 
 .arc svg {
   width: 100%;
   height: auto;
-  max-height: 38px;
+  max-height: 42px;
   display: block;
   margin: 0 auto;
   shape-rendering: crispEdges;
@@ -683,8 +752,10 @@ body.has-bg .note { background: rgba(8, 13, 22, 0.88); }
   position: sticky;
   bottom: 0;
   margin: 20px -16px calc(-28px - env(safe-area-inset-bottom));
-  padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, rgba(6, 10, 18, 0) 0%, rgba(6, 10, 18, 0.95) 30%, var(--bg) 100%);
+  padding: 16px 16px calc(14px + env(safe-area-inset-bottom));
+  /* A nagyobb betűvel a sáv magasabb: a takarásnak hamarabb kell teljesnek
+     lennie, különben a felirat a mögötte lévő gombokra csúszik. */
+  background: linear-gradient(180deg, rgba(6, 10, 18, 0) 0, rgba(6, 10, 18, 0.97) 14px, var(--bg) 30px);
 }
 
 .progress-line {
@@ -692,7 +763,7 @@ body.has-bg .note { background: rgba(8, 13, 22, 0.88); }
   align-items: center;
   justify-content: space-between;
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 14px;
   text-transform: uppercase;
   color: var(--muted);
   margin-bottom: 8px;
@@ -747,7 +818,7 @@ body.has-bg .note { background: rgba(8, 13, 22, 0.88); }
   color: var(--text);
   padding: 12px 18px;
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 14px;
   text-transform: uppercase;
   box-shadow: var(--px) var(--px) 0 var(--shadow);
   opacity: 0;

@@ -36,8 +36,9 @@ async function loadOverview() {
   $('stats').replaceChildren(
     stat(`${c.teams_ready}/${c.teams}`, 'csapat kész'),
     stat(c.criteria, 'szempont'),
-    stat(c.voters, 'szavazó cetli'),
-    stat(c.voters_voted, 'már szavazott'),
+    stat(c.voters, 'kinyomtatott cetli'),
+    stat(c.voters_activated, 'belépett'),
+    stat(`${c.voters_voted}/${c.voters_activated}`, 'szavazott'),
     stat(c.submissions, 'szavazólap'),
     stat(c.votes, 'pontszám')
   );
@@ -51,21 +52,62 @@ async function loadOverview() {
     : 'A főoldal látszik, de pontozni nem lehet.';
   $('votingBox').classList.toggle('live', open);
 
-  $('mainQr').src = `/api/admin/qr?format=png&size=600&data=${encodeURIComponent(state.baseUrl)}`;
+  // Csak cím változásakor töltjük újra: az 5 másodperces frissítés különben
+  // minden körben letöltené ugyanazt a QR-képet.
+  const qrSrc = `/api/admin/qr?format=png&size=600&data=${encodeURIComponent(state.baseUrl)}`;
+  if (!$('mainQr').src.endsWith(qrSrc)) $('mainQr').src = qrSrc;
   $('mainUrl').textContent = state.baseUrl;
   $('mainUrl').href = state.baseUrl;
   // A hálózati cím frissítése csak helyi futtatásnál értelmes: élesben a
   // PUBLIC_BASE_URL rögzíti a címet.
   const helyi = !data.base_url_fixed;
-  $('lanBox').hidden = !helyi;
+  $('refreshLan').hidden = !helyi;
+  $('lanHint').hidden = !helyi;
   $('baseWarn').textContent = data.base_url_fixed
     ? 'Rögzített nyilvános cím (PUBLIC_BASE_URL). Ez kerül minden QR-kódba.'
     : /localhost|127\.0\.0\.1/.test(state.baseUrl)
       ? 'Nem találtam hálózati címet, ezért localhost került ide. Telefonról ez nem érhető el.'
       : 'Ez a gép hálózati címe. Minden QR-kód erre mutat, tehát telefonról is működik.';
 
-  $('teamCount').value = c.teams_total;
-  $('voterCount').value = c.voters - 1; // a TESZT kód ezen kívül áll
+  // Frissítés közben ne írjuk felül azt a mezőt, amibe épp gépelnek.
+  if (document.activeElement !== $('teamCount')) $('teamCount').value = c.teams_total;
+  if (document.activeElement !== $('voterCount')) $('voterCount').value = c.voters - 1; // a TEST kód ezen kívül áll
+
+  await keszultseget();
+}
+
+/**
+ * Melyik csapatnak mi hiányzik még. Nyitva hagyva magától frissül, így a
+ * teremben körbejárva rögtön látszik, kinél kell még noszogatni.
+ */
+async function keszultseget() {
+  const { teams } = await api('/api/admin/teams');
+  state.teams = teams;
+
+  const keszek = teams.filter((t) => t.ready).length;
+  const mind = keszek === teams.length && teams.length > 0;
+
+  $('keszBox').classList.toggle('kesz', mind);
+  $('keszOsszegzo').textContent = teams.length
+    ? (mind ? `mind a ${teams.length} kész` : `${keszek}/${teams.length} kész`)
+    : 'nincs csapat';
+
+  $('keszLista').replaceChildren(
+    ...(teams.length
+      ? teams.map((t) =>
+          el('div', {
+            class: `kesz-sor ${t.ready ? 'ok' : ''}`,
+            style: { '--team': t.accent_color || '#7c5cff' },
+          },
+            el('span', { class: 'nev' }, el('i', {}), `${t.number}.`),
+            el('span', { class: 'hiany' },
+              t.ready
+                ? `Kész: ${t.label}`
+                : el('span', {}, `${t.label} - hiányzik: `, el('b', {}, t.missing.join(', '))))
+          )
+        )
+      : [el('div', { class: 'kesz-sor' }, el('span', { class: 'hiany' }, 'Még nincs csapat.'))])
+  );
 }
 
 async function saveSetting(key, value) {
@@ -81,6 +123,33 @@ async function saveSetting(key, value) {
 $('votingOpen').addEventListener('change', async (e) => {
   await saveSetting('voting_open', e.target.checked);
   loadOverview();
+});
+
+$('seedDemo').addEventListener('click', async () => {
+  const ok = confirm([
+    'Feltölti a csapatokat kitalált nevekkel, leírásokkal és képekkel, szavazatokat is generál,',
+    'és megnyitja a szavazást.',
+    '',
+    'A meglévő csapattartalom felülíródik. A TEST cetli szavazatai üresek maradnak,',
+    'azzal telefonról még tudsz szavazni.',
+  ].join('\n'));
+  if (!ok) return;
+
+  const btn = $('seedDemo');
+  const eredeti = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Generálás…';
+  try {
+    const r = await api('/api/admin/mintaadatok', { method: 'POST', body: { confirm: 'MINTA' } });
+    toast(r.message);
+    loadOverview();
+    loadTeams();
+    loadVoters();
+  } catch (err) {
+    toast(err.message, true);
+  }
+  btn.disabled = false;
+  btn.textContent = eredeti;
 });
 
 $('resetVotes').addEventListener('click', () => reset('votes', 'Törlöd az összes szavazatot?'));
@@ -104,21 +173,55 @@ async function reset(scope, question) {
   }
 }
 
-$('refreshLan').addEventListener('click', async () => {
+/**
+ * A címválasztó csak akkor jelenik meg, ha több valódi hálózati cím is van.
+ * Az automatikus felismerés ilyenkor tévedhet (régi wifi, hotspot, VPN),
+ * és kézzel is ki lehet jelölni a jót.
+ */
+function lanCimekKirajzol(lista, aktiv) {
+  const tobb = (lista || []).length > 1;
+  $('lanValaszto').hidden = !tobb;
+  if (!tobb) return;
+
+  $('lanCimek').replaceChildren(
+    ...lista.map((a) =>
+      el('button', {
+        class: `mini ${a.ip === aktiv ? 'ok' : ''}`,
+        title: a.nev,
+        onclick: () => halozatFrissit(a.ip),
+      }, a.ip)
+    )
+  );
+}
+
+async function halozatFrissit(ip = null) {
   const btn = $('refreshLan');
+  const eredeti = btn.textContent;
   btn.disabled = true;
+  btn.textContent = 'Keresés…';
   try {
-    const r = await api('/api/admin/halozat/frissites', { method: 'POST' });
+    const r = await api('/api/admin/halozat/frissites', {
+      method: 'POST',
+      body: ip ? { ip } : {},
+    });
     if (r.rogzitett) toast('A PUBLIC_BASE_URL van beállítva, azt nem írjuk felül');
+    else if (!r.ip) toast('Nem találtam hálózati címet', true);
+    else if (r.kezi) toast(`Beállítva: ${r.ip}`);
     else if (r.valtozott) toast(`Új cím: ${r.ip}`);
-    else toast('A cím nem változott');
+    else toast(`A cím nem változott: ${r.ip}`);
+
+    lanCimekKirajzol(r.tobbi, r.ip);
+    // A QR-kódok és a csapatlinkek a friss címből épülnek újra.
     await loadOverview();
     await loadTeams();
   } catch (err) {
     toast(err.message, true);
   }
   btn.disabled = false;
-});
+  btn.textContent = eredeti;
+}
+
+$('refreshLan').addEventListener('click', () => halozatFrissit());
 
 $('logout').addEventListener('click', async () => {
   await api('/api/admin/logout', { method: 'POST' }).catch(() => {});
@@ -343,7 +446,8 @@ async function loadResults() {
   const s = r.stats;
 
   $('resultStats').replaceChildren(
-    stat(`${s.voters_voted}/${s.voters_total}`, 'szavazó'),
+    stat(`${s.voters_voted}/${s.voters_activated}`, 'szavazott / belépett'),
+    stat(s.voters_total, 'kinyomtatott cetli'),
     stat(s.submissions, 'szavazólap'),
     stat(s.votes, 'pontszám'),
     stat(s.voting_open ? 'Nyitva' : 'Zárva', 'szavazás')
@@ -429,6 +533,8 @@ function setupRefresh() {
   clearInterval(refreshTimer);
   refreshTimer = setInterval(() => {
     if (!$('panel-eredmenyek').hidden) loadResults().catch(() => {});
+    // Az áttekintés készültségi listája is éljen: e szerint járunk körbe.
+    if (!$('panel-attekintes').hidden) loadOverview().catch(() => {});
   }, 5000);
 }
 

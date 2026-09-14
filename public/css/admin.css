@@ -32,14 +32,17 @@
   border: 3px solid var(--line);
   color: var(--muted);
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 14px;
   text-transform: uppercase;
-  padding: 11px 13px;
+  padding: 12px 15px;
   cursor: pointer;
   box-shadow: 3px 3px 0 var(--shadow);
 }
 
-.tab:hover { color: var(--text); }
+.tab { transition: background-color 0.08s steps(2), color 0.08s steps(2); }
+.tab:hover { color: var(--cyan); background: #1b2b46; border-color: var(--line-lit); }
+.tab:focus-visible { outline: 3px solid var(--text); outline-offset: 3px; }
+.tab.on:hover { color: #04121c; background: color-mix(in srgb, var(--cyan) 84%, #fff); border-color: #000; }
 
 .tab.on {
   color: #04121c;
@@ -68,14 +71,14 @@
 .stat b {
   display: block;
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: 26px;
   color: var(--amber);
   line-height: 1.3;
 }
 
 .stat span {
   font-family: var(--font-display);
-  font-size: 9px;
+  font-size: 12px;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -85,16 +88,16 @@
 table.grid {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 table.grid th {
   text-align: left;
   font-family: var(--font-display);
-  font-size: 9px;
+  font-size: 12px;
   text-transform: uppercase;
   color: var(--cyan);
-  padding: 10px;
+  padding: 11px 10px;
   border-bottom: 3px solid var(--line);
   white-space: nowrap;
 }
@@ -114,7 +117,7 @@ table.grid tr:hover td { background: rgba(46, 232, 255, 0.04); }
 code.key {
   display: inline-block;
   font-family: var(--font-display);
-  font-size: 12px;
+  font-size: 15px;
   background: #05090f;
   border: 2px solid var(--line-lit);
   color: var(--amber);
@@ -124,14 +127,14 @@ code.key {
   user-select: all;
 }
 
-code.key:hover { border-color: var(--cyan); }
+code.key:hover { border-color: var(--cyan); background: #112034; color: #ffe08a; }
 
 /* A szavazó kódja a neve: keret nélkül, csak nagy és olvasható. */
 .voter-code {
   font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: 0.16em;
-  font-size: 17px;
+  font-size: 20px;
   color: var(--amber);
   cursor: pointer;
 }
@@ -149,11 +152,12 @@ td.jobbra { text-align: right; }
   cursor: pointer;
   user-select: none;
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 14px;
   text-transform: uppercase;
 }
 
 .switch input { position: absolute; opacity: 0; pointer-events: none; }
+.switch:hover i { border-color: var(--cyan); }
 
 .switch i {
   width: 48px;
@@ -188,8 +192,8 @@ td.jobbra { text-align: right; }
 }
 
 .switch-row:last-child { border-bottom: none; }
-.switch-row strong { font-family: var(--font-display); font-size: 12px; text-transform: uppercase; }
-.switch-row p { margin: 4px 0 0; font-size: 13px; color: var(--muted); max-width: 60ch; }
+.switch-row strong { font-family: var(--font-display); font-size: 15px; text-transform: uppercase; }
+.switch-row p { margin: 5px 0 0; font-size: 15px; color: var(--muted); max-width: 60ch; }
 
 .big-toggle {
   display: flex;
@@ -204,7 +208,7 @@ td.jobbra { text-align: right; }
   margin-bottom: 20px;
 }
 
-.big-toggle strong { font-family: var(--font-display); font-size: 14px; text-transform: uppercase; }
+.big-toggle strong { font-family: var(--font-display); font-size: 18px; text-transform: uppercase; }
 .big-toggle.live { border-color: var(--green); background: rgba(61, 255, 158, 0.08); }
 .big-toggle.live strong { color: var(--green); }
 
@@ -266,15 +270,15 @@ td.jobbra { text-align: right; }
 .rank:nth-child(2) .rank-pos { color: #d7dce8; }
 .rank:nth-child(3) .rank-pos { color: #e0a173; }
 
-.rank-title { font-family: var(--font-display); font-size: 13px; text-transform: uppercase; }
-.rank-sub { font-size: 12.5px; color: var(--muted); }
+.rank-title { font-family: var(--font-display); font-size: 16px; text-transform: uppercase; }
+.rank-sub { font-size: 14px; color: var(--muted); }
 
 .rank-score { text-align: right; }
-.rank-score b { font-family: var(--font-display); font-size: 19px; color: var(--amber); }
-.rank-score span { display: block; font-size: 10px; font-family: var(--font-display); text-transform: uppercase; color: var(--muted); }
+.rank-score b { font-family: var(--font-display); font-size: 22px; color: var(--amber); }
+.rank-score span { display: block; font-size: 12px; font-family: var(--font-display); text-transform: uppercase; color: var(--muted); }
 
 .meter {
-  height: 10px;
+  height: 16px;
   background: #05090f;
   border: 2px solid var(--line);
   padding: 1px;
@@ -305,14 +309,25 @@ td.jobbra { text-align: right; }
 .winner small {
   display: block;
   font-family: var(--font-display);
-  font-size: 9px;
+  font-size: 12px;
   text-transform: uppercase;
   color: var(--cyan);
   margin-bottom: 6px;
 }
 
-.winner b { font-family: var(--font-display); font-size: 12px; text-transform: uppercase; }
-.winner span { display: block; font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+.winner b { font-family: var(--font-display); font-size: 15px; text-transform: uppercase; }
+.winner span { display: block; font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+/*
+ * A nagyobb betűvel a hosszú "hiányzik" lista összenyomná a csapatnevet és a
+ * gombokat. Ezek az oszlopok a tartalmuk szerint kapnak helyet, nem törnek.
+ */
+@media (min-width: 781px) {
+  #teamsTable td[data-label='Csapat / játék'] { min-width: 200px; }
+  #teamsTable td[data-label='Kód'],
+  #teamsTable td[data-label='Műveletek'] { white-space: nowrap; width: 1%; }
+  #teamsTable td[data-label='Műveletek'] .row { flex-wrap: nowrap; }
+}
 
 /* ---------- mobil ---------- */
 
@@ -365,10 +380,10 @@ td.jobbra { text-align: right; }
     content: attr(data-label);
     display: block;
     font-family: var(--font-display);
-    font-size: 9px;
+    font-size: 12px;
     text-transform: uppercase;
     color: var(--cyan);
-    margin-bottom: 5px;
+    margin-bottom: 6px;
   }
 
   table.grid:not(.keep-table) td input[type='text'],
@@ -377,10 +392,97 @@ td.jobbra { text-align: right; }
 
   /* A részletes bontás túl sok oszlop: marad valódi, görgethető táblázat. */
   .scroll-x.keep { overflow-x: auto; }
-  table.grid.keep-table { min-width: 520px; font-size: 13px; }
+  table.grid.keep-table { min-width: 560px; font-size: 14px; }
   table.grid.keep-table td, table.grid.keep-table th { padding: 8px 7px; }
 
   .rank { grid-template-columns: 40px 1fr auto; padding: 12px; gap: 10px; }
-  .rank-score b { font-size: 16px; }
+  .rank-score b { font-size: 18px; }
   .winners { grid-template-columns: 1fr; }
+}
+
+/* ---------- keszultseg (mibol mi hianyzik) ---------- */
+
+/*
+ * Az Attekintes tetejen, a szavazas kapcsoloja alatt. Nyitva tartva elo
+ * lista arrol, melyik csapat mit nem toltott meg fel: ez alapjan lehet
+ * odaszolni nekik a teremben.
+ */
+.keszultseg {
+  border: 3px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--px) var(--px) 0 var(--shadow);
+  margin-bottom: 16px;
+}
+
+.keszultseg summary {
+  cursor: pointer;
+  padding: 13px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  list-style: none;
+  font-family: var(--font-display);
+  font-size: 15px;
+  text-transform: uppercase;
+}
+
+.keszultseg summary::-webkit-details-marker { display: none; }
+.keszultseg summary:hover { background: rgba(46, 232, 255, 0.06); color: var(--cyan); }
+.keszultseg[open] { border-color: var(--line-lit); }
+.keszultseg[open] summary { border-bottom: 3px solid var(--line); }
+
+/* A nyitást jelző háromszög a felirat előtt, pixeles stílusban. */
+.keszultseg summary span::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 10px;
+  color: var(--cyan);
+}
+
+.keszultseg[open] summary span::before { content: '▾'; }
+
+.keszultseg summary b {
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--amber);
+  white-space: nowrap;
+}
+
+.keszultseg.kesz summary b { color: var(--green); }
+
+.kesz-sor {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding: 11px 15px;
+  border-bottom: 2px solid var(--line);
+}
+
+.kesz-sor:last-child { border-bottom: none; }
+.kesz-sor.ok { background: rgba(61, 255, 158, 0.06); }
+
+.kesz-sor .nev {
+  font-family: var(--font-display);
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.kesz-sor .nev i {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  background: var(--team, var(--line-lit));
+  display: block;
+}
+
+.kesz-sor .hiany { font-size: 15px; color: var(--muted); }
+.kesz-sor.ok .hiany { color: var(--green); }
+
+.kesz-sor .hiany b {
+  color: var(--danger);
+  font-weight: 400;
 }

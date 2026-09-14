@@ -28,12 +28,23 @@ export function esc(value) {
   })[c]);
 }
 
+/*
+ * Object.assign(node.style, ...) csendben eldobja a CSS-változókat, márpedig a
+ * csapatszínt mindenhol --team-ként adjuk át. Azokat setProperty kell beírja.
+ */
+function setStyle(node, styles) {
+  for (const [k, v] of Object.entries(styles)) {
+    if (k.startsWith('--')) node.style.setProperty(k, v);
+    else node.style[k] = v;
+  }
+}
+
 export function el(tag, props = {}, ...children) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(props || {})) {
     if (v === null || v === undefined || v === false) continue;
     if (k === 'class') node.className = v;
-    else if (k === 'style' && typeof v === 'object') Object.assign(node.style, v);
+    else if (k === 'style' && typeof v === 'object') setStyle(node, v);
     else if (k === 'html') node.innerHTML = v;
     else if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.slice(2), v);
     else if (k === 'dataset') Object.assign(node.dataset, v);

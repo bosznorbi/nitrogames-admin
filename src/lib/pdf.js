@@ -106,69 +106,165 @@ export async function votersPdf(voters, { cols = 4 } = {}) {
   return toBuffer(doc);
 }
 
+/* ---------- csapat kezdocsomag ---------- */
+
 /**
- * Csapat beleptetolap: harom EGYFORMA sav egy A4 lapon. A lap magassaga
- * pontosan harmadolva van, a ket vagovonal a harmadoknal fut, igy a ket
- * vagas utan mindharom lap ugyanakkora lesz.
+ * A harom kemeny feltetel. Szo szerint a kontroller-csomag README-jebol,
+ * mert a csapatok ugyanezt kapjak a promptban is: ne terjen el a ketto.
+ */
+export const ALAPSZABALYOK = [
+  'Két játékos, egy gépen. Mindkét kontroller irányítson valamit.',
+  'Egy percen belül dőljön el, ki a győztes.',
+  'A kör legyen újraindítható a lap újratöltése nélkül.',
+];
+
+export const MENETREND = [
+  'Most: kitaláljátok a játékot, és AI-jal megépítitek.',
+  'Közben: a csapat konzolon feltöltitek a nevet, a leírást, a háttér- és a csempeképet.',
+  'A végén: letöltitek a saját QR-kódotokat, és kreatív designt csináltok a játék köré. '
+  + 'A QR-kódot építsétek bele úgy, ahogy szeretnétek, ez kerül az asztalotokra.',
+  'A bemutatón: kirakjuk a gépeket, és bárki leülhet egymás ellen játszani a játékotokkal.',
+  'Pontozás: aki játszott, beolvassa a designotokba épített QR-t, és ott pontoz.',
+  'Zárás: lezárjuk a szavazást, és kivetítjük az eredményhirdetést.',
+];
+
+/** Kis szakaszcim vekony alahuzassal. */
+function szakaszCim(doc, cim, x, y, w) {
+  doc.font('arcade').fontSize(11).fillColor(INK).text(cim.toUpperCase(), x, y, { width: w });
+  const vy = y + mm(4.6);
+  doc.save().lineWidth(0.7).strokeColor('#c7ccd8')
+    .moveTo(x, vy).lineTo(x + w, vy).stroke().restore();
+  return vy + mm(2.2);
+}
+
+/**
+ * Egy felsorolaspont. A kiemelt resz ugyanabban a bekezdesben folytatodik,
+ * nem kulon sorban: igy ket helyett egy sor lesz belole, es kifer az A5.
+ */
+function pont(doc, jel, szoveg, x, y, w, { meret = 8, kiemelt = null, vastag = false } = {}) {
+  const behuzas = mm(3.6);
+  doc.font('bold').fontSize(meret).fillColor('#8b93a5').text(jel, x, y, { width: behuzas });
+
+  const tx = x + behuzas;
+  const tw = w - behuzas;
+
+  if (vastag) {
+    doc.font('bold').fontSize(meret).fillColor(INK).text(szoveg, tx, y, { width: tw, lineGap: 0.5 });
+  } else if (kiemelt && !szoveg) {
+    doc.font('bold').fontSize(meret).fillColor(INK)
+      .text(kiemelt, tx, y, { width: tw, lineGap: 0.5 });
+  } else if (kiemelt) {
+    doc.font('bold').fontSize(meret).fillColor(INK)
+      .text(`${kiemelt}. `, tx, y, { width: tw, lineGap: 0.5, continued: true });
+    doc.font('sans').fontSize(meret).fillColor(MUTED).text(szoveg, { lineGap: 0.5 });
+  } else {
+    doc.font('sans').fontSize(meret).fillColor(INK).text(szoveg, tx, y, { width: tw, lineGap: 0.5 });
+  }
+  return doc.y + mm(1.2);
+}
+
+/**
+ * Csapat kezdocsomag: egy A5 oldal csapatonkent, ketto egy fektetett A4-en,
+ * kozottuk egyetlen vagovonal. A ket fel pontosan egyforma, es mindenhol
+ * ugyanakkora a margo, hogy vagas utan is szimmetrikus legyen.
  *
  * @param {Array<{code:string, console_url:string}>} teams
+ * @param {{base?:string, repoUrl?:string, criteria?:Array<{label:string,description:string}>}} opts
  */
-export async function teamSheetPdf(teams, { base = '' } = {}) {
-  const savH = PAGE.height / 3;
-  const oldalPad = mm(12);
-  const belsoPad = mm(11);
-  const doc = newDoc('Nitrogames csapat belépők');
+export async function teamSheetPdf(teams, { base = '', repoUrl = '', criteria = [] } = {}) {
+  const LAP = { width: mm(297), height: mm(210) };
+  const felW = LAP.width / 2;
+  const pad = mm(10);
+  const doc = newDoc('Nitrogames csapat kezdőcsomag');
   const qrs = await Promise.all(teams.map((t) => qrPngBuffer(t.console_url, { size: 600 })));
   const host = base.replace(/^https?:\/\//, '');
+  const repo = repoUrl.replace(/^https?:\/\//, '');
 
   teams.forEach((team, i) => {
-    const slot = i % 3;
-    if (slot === 0) {
-      doc.addPage();
-      // Csak a két vágóvonal kell: két vágás, három egyforma lap.
-      for (const vonal of [savH, savH * 2]) {
-        doc.save().dash(4, { space: 4 }).lineWidth(0.6).strokeColor(CUT)
-          .moveTo(0, vonal).lineTo(PAGE.width, vonal).stroke().undash().restore();
-      }
+    const oldal = i % 2;
+    if (oldal === 0) {
+      doc.addPage({ size: 'A4', layout: 'landscape', margin: 0 });
+      // Egyetlen vágás középen: két egyforma A5.
+      doc.save().dash(4, { space: 4 }).lineWidth(0.6).strokeColor(CUT)
+        .moveTo(felW, 0).lineTo(felW, LAP.height).stroke().undash().restore();
     }
 
-    const y = slot * savH;
-    const qrSize = mm(46);
-    const qx = PAGE.width - oldalPad - qrSize;
-    const lx = oldalPad;
-    const leftW = qx - lx - mm(10);
+    const x0 = oldal * felW;
+    const lx = x0 + pad;
+    const w = felW - 2 * pad;
 
-    // A QR teteje és a logó teteje egy vonalban.
-    const teteje = y + belsoPad;
-    doc.image(LOGO, lx, teteje, { width: mm(40) });
-    doc.image(qrs[i], qx, teteje, { width: qrSize });
+    /* --- fejléc: logó balra, QR jobbra, tetejük egy vonalban --- */
 
-    // A szöveg a sáv aljára zárva, így a logó alatt levegő marad.
-    const alja = y + savH - belsoPad;
-    let cy = alja - mm(38);
+    const qrMeret = mm(30);
+    const qx = x0 + felW - pad - qrMeret;
+    const teteje = pad;
 
-    doc.font('sans').fontSize(9).fillColor(MUTED).text('A csapatkódotok:', lx, cy, { width: leftW });
-    cy += mm(5);
-    doc.font('bold').fontSize(28).fillColor(INK)
-      .text(team.code, lx, cy, { width: leftW, characterSpacing: 1.5 });
-    cy += mm(13);
+    doc.image(LOGO, lx, teteje, { width: mm(34) });
+    doc.image(qrs[i], qx, teteje, { width: qrMeret });
+    // A felirat a QR alatt, pontosan a QR szélességébe zárva középre. 6 ponton
+    // 27 mm szeles, tehat a 30 mm-es QR ket széle marad a margója.
+    doc.font('sans').fontSize(6).fillColor(MUTED).text(
+      'Csapatotok adminfelülete', qx, teteje + qrMeret + mm(1.6),
+      { width: qrMeret, align: 'center' }
+    );
 
-    doc.font('sans').fontSize(9).fillColor(MUTED).text('Írjátok be a böngészőbe:', lx, cy, { width: leftW });
-    cy += mm(4.5);
-    doc.font('bold').fontSize(12).fillColor(INK)
-      .text(host + '/csapat', lx, cy, { width: leftW, lineBreak: false });
-    cy += mm(7.5);
+    const balW = qx - lx - mm(6);
+    let cy = teteje + mm(12);
 
-    doc.font('sans').fontSize(8.5).fillColor(MUTED).text(
-      'Ezzel a kóddal éritek el a csapat konzolt és az API-t, ahányan akarjátok, '
-      + 'telefonról és gépről is. Más csapatnak ne adjátok oda.',
-      lx, cy, { width: leftW, lineGap: 1 }
+    doc.font('sans').fontSize(7.5).fillColor(MUTED).text('A CSAPATKÓDOTOK', lx, cy, { width: balW, characterSpacing: 0.8 });
+    cy += mm(4);
+    doc.font('bold').fontSize(21).fillColor(INK).text(team.code, lx, cy, { width: balW, characterSpacing: 1.2 });
+    cy += mm(9.5);
+
+    doc.font('sans').fontSize(7.5).fillColor(MUTED).text('A konzolotok', lx, cy, { width: balW });
+    cy += mm(3.6);
+    doc.font('bold').fontSize(9.5).fillColor(INK).text(`${host}/csapat`, lx, cy, { width: balW, lineBreak: false });
+    cy += mm(5.4);
+
+    if (repo) {
+      doc.font('sans').fontSize(7.5).fillColor(MUTED).text('Segédanyag és kontroller-csomag', lx, cy, { width: balW });
+      cy += mm(3.6);
+      doc.font('bold').fontSize(9.5).fillColor(INK).text(repo, lx, cy, { width: balW, lineBreak: false });
+      cy += mm(5.4);
+    }
+
+    /* --- a lap többi része a fejléc alatt, teljes szélességben --- */
+
+    let y = Math.max(cy + mm(2), teteje + qrMeret + mm(6));
+
+    y = szakaszCim(doc, 'A három alapszabály', lx, y, w);
+    for (const szabaly of ALAPSZABALYOK) {
+      y = pont(doc, '■', szabaly, lx, y, w, { meret: 8, vastag: true });
+    }
+
+    y += mm(1.5);
+    y = szakaszCim(doc, 'Amire pontoznak', lx, y, w);
+    if (criteria.length) {
+      for (const c of criteria) {
+        y = pont(doc, '▸', c.description || '', lx, y, w, { meret: 8, kiemelt: c.label });
+      }
+    } else {
+      doc.font('sans').fontSize(8).fillColor(MUTED).text('A szempontokat a szervezők állítják be.', lx, y, { width: w });
+      y = doc.y + mm(1.4);
+    }
+
+    y += mm(1.5);
+    y = szakaszCim(doc, 'Menetrend', lx, y, w);
+    for (const sor of MENETREND) y = pont(doc, '·', sor, lx, y, w, { meret: 8 });
+
+    /* --- lábléc a lap aljára zárva --- */
+
+    doc.font('sans').fontSize(6.8).fillColor(MUTED).text(
+      'A kód a csapaté: a konzolt és az API-t is ezzel éritek el, ahányan akarjátok. '
+      + 'Más csapatnak ne adjátok oda, és nyilvános repóba se tegyétek ki.',
+      lx, LAP.height - pad - mm(6), { width: w, lineGap: 0.6 }
     );
   });
 
   if (!teams.length) {
-    doc.addPage().font('sans').fontSize(12).fillColor(INK)
-      .text('Még nincs egyetlen aktív csapat sem.', MARGIN, MARGIN);
+    doc.addPage({ size: 'A4', layout: 'landscape', margin: 0 })
+      .font('sans').fontSize(12).fillColor(INK)
+      .text('Még nincs egyetlen aktív csapat sem.', mm(12), mm(12));
   }
 
   return toBuffer(doc);

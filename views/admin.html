@@ -19,7 +19,6 @@
   <div class="admin-top">
     <span class="brand"><img src="/static/img/logo-mark-white.svg" alt="Nitrowise" width="26" height="24"><span>Nitrogames admin</span></span>
     <div class="row tight">
-      <a class="mini" href="/admin/qr-kodok" target="_blank" rel="noopener">QR-kódok</a>
       <a class="mini" href="/admin/eredmeny" target="_blank" rel="noopener">Eredményhirdetés</a>
       <button class="mini" id="logout">Kilépés</button>
     </div>
@@ -46,17 +45,41 @@
 
   <!-- ---------- Áttekintés ---------- -->
   <section class="panel" id="panel-attekintes">
+
+    <!-- Élőben mutatja, melyik csapatnak mi hiányzik, hogy oda lehessen szólni. -->
+    <details class="keszultseg" id="keszBox">
+      <summary>
+        <span>Miből mi hiányzik még</span>
+        <b id="keszOsszegzo">…</b>
+      </summary>
+      <div id="keszLista"></div>
+    </details>
+
     <div class="stats" id="stats"></div>
 
     <div class="card">
-      <h2 style="margin-top:0">Nyomtatnivalók</h2>
+      <h2 style="margin-top:0">QR-kódok</h2>
       <p class="small muted" style="margin-top:0">
-        Mindkettő új lapon nyílik meg. Gépről onnan nyomtatod vagy mented,
+        Mind új lapon nyílik meg. Gépről onnan nyomtatod vagy mented,
         telefonról a megosztás gombbal küldöd tovább.
       </p>
       <div class="row tight">
-        <a class="btn" href="/api/admin/print/voters.pdf?cols=4&nezet=inline" target="_blank" rel="noopener">Szavazói belépők</a>
-        <a class="btn" href="/api/admin/print/teams.pdf?nezet=inline" target="_blank" rel="noopener">Csapat belépők</a>
+        <button class="btn warn" id="refreshLan" hidden>Hálózati cím frissítése</button>
+        <a class="btn" href="/api/admin/print/voters.pdf?cols=4&nezet=inline" target="_blank" rel="noopener">Szavazócetlik</a>
+        <a class="btn" href="/api/admin/print/teams.pdf?nezet=inline" target="_blank" rel="noopener">Csapat kezdőcsomag</a>
+        <a class="btn" href="/admin/qr-kodok" target="_blank" rel="noopener">Játékok QR-jei</a>
+      </div>
+      <p class="small muted" style="margin-bottom:0" id="lanHint" hidden>
+        Ha másik wifire vagy hotspotra váltasz, a frissítéssel íratod át minden
+        QR-kódot az új címre. Újraindítás nem kell, és a már kinyomtatott lapokat
+        ilyenkor újra ki kell nyomtatni. Railwayen ez a gomb eltűnik, ott a
+        beállított domain kerül a kódokba.
+      </p>
+      <div id="lanValaszto" hidden style="margin-top:12px">
+        <p class="small muted" style="margin:0 0 8px">
+          Ha nem a jó címet találta el, válaszd ki kézzel:
+        </p>
+        <div class="row tight" id="lanCimek"></div>
       </div>
     </div>
 
@@ -70,30 +93,29 @@
         <div class="qr-box" style="width:150px;flex:0 0 auto"><img id="mainQr" alt="Fő QR-kód"></div>
         <div style="min-width:200px;flex:1">
           <p style="margin:0 0 8px;word-break:break-all"><a id="mainUrl" href="/" target="_blank" rel="noopener"></a></p>
-          <p class="small muted" id="baseWarn" style="margin:0 0 10px"></p>
-          <div id="lanBox" hidden>
-            <button class="mini" id="refreshLan">Hálózati cím frissítése</button>
-            <p class="small muted" style="margin:10px 0 0">
-              Ha másik wifire vagy hotspotra váltasz, ezzel íratod át a QR-kódokat
-              az új címre. Újraindítás nem kell. Railwayen ez a gomb eltűnik, ott a
-              beállított domain kerül a kódokba.
-            </p>
-          </div>
+          <p class="small muted" id="baseWarn" style="margin:0"></p>
         </div>
       </div>
     </div>
 
     <div class="card">
-      <h2 style="margin-top:0; color:var(--danger)">Nullázás</h2>
+      <h2 style="margin-top:0; color:var(--danger)">Danger zone</h2>
       <p class="small muted" style="margin-top:0">
-        Tesztelés után ezzel tisztítasz. A csapatkódok, a szavazólapok QR-kódjai
-        és a szavazói cetlik <strong>mindkét esetben érvényben maradnak</strong>,
-        tehát az előre kinyomtatott lapok jók lesznek utána is.
+        Tesztelésre való. A csapatkódok, a szavazólapok QR-kódjai és a szavazói
+        cetlik <strong>egyik művelettől sem változnak</strong>, tehát az előre
+        kinyomtatott lapok mindig jók maradnak.
       </p>
       <div class="row tight">
-        <button class="mini danger" id="resetVotes">Csak a szavazatok</button>
-        <button class="mini danger" id="resetAll">Szavazatok és a csapatok tartalma</button>
+        <button class="mini ok" id="seedDemo">Mintaadatok generálása</button>
+        <button class="mini danger" id="resetVotes">Szavazatok törlése</button>
+        <button class="mini danger" id="resetAll">Szavazatok és csapattartalom törlése</button>
       </div>
+      <p class="small muted" style="margin-bottom:0">
+        A mintaadatok kitöltik a csapatokat (név, játék, leírás, háttér- és
+        csempekép), szavazatokat is generálnak, és megnyitják a szavazást.
+        A <strong>TEST</strong> cetli szavazatai üresek maradnak, azzal
+        telefonról még végig tudsz szavazni a kész adatokon.
+      </p>
     </div>
   </section>
 
@@ -106,7 +128,7 @@
           <input type="number" id="teamCount" min="0" max="100" step="1">
         </label>
         <button class="btn" id="setTeamCount" style="margin-top:18px">Beállít</button>
-        <a class="btn ghost" href="/api/admin/print/teams.pdf?nezet=inline" target="_blank" rel="noopener" style="margin-top:18px">Csapat belépők (PDF)</a>
+        <a class="btn ghost" href="/api/admin/print/teams.pdf?nezet=inline" target="_blank" rel="noopener" style="margin-top:18px">Csapat kezdőcsomag (PDF)</a>
       </div>
       <p class="small muted" style="margin-bottom:0">
         A csapatok maguk adnak nevet maguknak és a játéknak, az API-n keresztül.
@@ -177,7 +199,7 @@
       </div>
       <p class="small muted" style="margin-bottom:0">
         Pontosan ennyi cetli lesz. Ha kevesebb van, generálunk hozzá; ha több,
-        a legutóbb létrehozottakat eldobjuk. A TESZT kód ezen kívül mindig megmarad.
+        a legutóbb létrehozottakat eldobjuk. A TEST kód ezen kívül mindig megmarad.
       </p>
     </div>
 

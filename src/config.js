@@ -37,6 +37,9 @@ export const config = {
   sessionSecret: resolveSecret(),
   publicBaseUrl: (process.env.PUBLIC_BASE_URL || '').replace(/\/+$/, ''),
   eventName: process.env.EVENT_NAME || 'Nitrogames',
+  // A csapatok kezdőcsomagja: ez a link kerül a kinyomtatott lapjukra.
+  starterRepoUrl: (process.env.STARTER_REPO_URL || 'https://github.com/bosznorbi/nitrogames')
+    .replace(/\/+$/, ''),
   image: {
     background: { width: int(process.env.BG_WIDTH, 1080), height: int(process.env.BG_HEIGHT, 1920) },
     icon: { width: int(process.env.ICON_WIDTH, 640), height: int(process.env.ICON_HEIGHT, 768) },

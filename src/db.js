@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import { config } from './config.js';
 import { publicId, teamCode, voterCode, randomToken } from './lib/ids.js';
+import { CSAPAT_KODOK, CETLI_KODOK } from './kodok.js';
 
 /**
  * A csapatok azonositasa atallt olvashato slugrol kitalalhatatlan public_id-ra,
@@ -234,8 +235,11 @@ export function teamLabel(team) {
 
 /* ---------- szavazok ---------- */
 
-/** Tesztelesre beegetett kod, mintha ki lenne nyomtatva. */
-export const TEST_CODE = 'TESZT';
+/** Tesztelesre beegetett kod, mintha ki lenne nyomtatva. Negy betu, mint a tobbi. */
+export const TEST_CODE = 'TEST';
+
+/** A korabbi otbetus kod. Regi adatbazisban meg ez all a sorban. */
+const REGI_TEST_CODE = 'TESZT';
 
 export function createVoters(count) {
   const taken = new Set(db.prepare('SELECT code FROM voters').all().map((r) => r.code));
@@ -260,6 +264,64 @@ export function ensureTestVoter() {
     .get(randomToken(16), TEST_CODE);
 }
 
+/**
+ * A kinyomtatott kodok a kodbazisban allnak (src/kodok.js), nem az
+ * adatbazisban keletkeznek. Igy egy uj adatbazis, egy nullazas vagy egy
+ * elveszett volume utan is pontosan ugyanaz all vissza, es a mar kiosztott
+ * papirok ervenyesek maradnak.
+ *
+ * Semmit nem torol: a meglevo sorokat a beegetett ertekre igazitja, a
+ * hianyzokat letrehozza. A szavazatok a sorok id-jara hivatkoznak, azokat
+ * nem bantjuk.
+ */
+function seedFixedCodes() {
+  db.transaction(() => {
+    for (const t of CSAPAT_KODOK) {
+      const meglevo = db.prepare('SELECT * FROM teams WHERE number = ?').get(t.szam);
+      const szin = ACCENTS[(t.szam - 1) % ACCENTS.length];
+      if (!meglevo) {
+        db.prepare(
+          'INSERT INTO teams (public_id, api_code, number, accent_color) VALUES (?, ?, ?, ?)'
+        ).run(t.publicId, t.kod, t.szam, szin);
+      } else if (meglevo.api_code !== t.kod || meglevo.public_id !== t.publicId) {
+        db.prepare("UPDATE teams SET api_code = ?, public_id = ?, updated_at = datetime('now') WHERE id = ?")
+          .run(t.kod, t.publicId, meglevo.id);
+      }
+    }
+
+    for (const v of CETLI_KODOK) {
+      const meglevo = db.prepare('SELECT * FROM voters WHERE code = ?').get(v.kod);
+      if (!meglevo) {
+        db.prepare('INSERT INTO voters (token, code) VALUES (?, ?)').run(v.token, v.kod);
+      } else if (meglevo.token !== v.token) {
+        db.prepare('UPDATE voters SET token = ? WHERE id = ?').run(v.token, meglevo.id);
+      }
+    }
+  })();
+}
+
+/**
+ * A teszt kod otbetusrol negybetusre valtott. A regi sort atnevezzuk, nem
+ * ujat keszitunk: igy a token megmarad, tehat a mar belepett telefon belepve
+ * is marad. A negybetus kodot a generator is kiadhatja, ezert ha veletlenul
+ * mar foglalt, a foglalo kap eloszor uj kodot.
+ */
+function migrateTestCode() {
+  const regi = db.prepare('SELECT * FROM voters WHERE code = ?').get(REGI_TEST_CODE);
+  if (!regi) return;
+
+  db.transaction(() => {
+    const utban = db.prepare('SELECT * FROM voters WHERE code = ?').get(TEST_CODE);
+    if (utban) {
+      const foglalt = new Set(db.prepare('SELECT code FROM voters').all().map((r) => r.code));
+      let uj = voterCode();
+      while (foglalt.has(uj)) uj = voterCode();
+      db.prepare('UPDATE voters SET code = ? WHERE id = ?').run(uj, utban.id);
+    }
+    db.prepare('UPDATE voters SET code = ? WHERE id = ?').run(TEST_CODE, regi.id);
+  })();
+}
+
 seedCriteriaIfEmpty();
 
 // A skala 1-5-rol 1-4-re valtott. Az erintetlen alap szempontokat atallitjuk;
@@ -269,4 +331,6 @@ db.prepare(
    WHERE min_score = 1 AND max_score = 5 AND key IN (${DEFAULT_CRITERIA.map(() => '?').join(',')})`
 ).run(...DEFAULT_CRITERIA.map((c) => c.key));
 
+migrateTestCode();
 ensureTestVoter();
+seedFixedCodes();

@@ -9,7 +9,8 @@ import { ADMIN_COOKIE, adminCookieOpts, rateLimit, requireAdmin, signAdminSessio
 import { formatCode, safeEqual, slugify } from '../lib/ids.js';
 import { qrPngBuffer, qrSvg } from '../lib/qr.js';
 import { teamSheetPdf, votersPdf } from '../lib/pdf.js';
-import { detectLanIp, lanIp, localIps } from '../lib/lan.js';
+import { detectLanIp, lanIp, localIps, setLanIp } from '../lib/lan.js';
+import { mintaadatokat } from '../lib/mintaadat.js';
 
 export const adminRouter = express.Router();
 
@@ -80,12 +81,29 @@ adminRouter.put('/settings', (req, res) => {
  */
 adminRouter.post('/halozat/frissites', async (req, res) => {
   const elotte = lanIp();
-  const utana = await detectLanIp();
+  const kert = String((req.body && req.body.ip) || '').trim();
+
+  // Kézi választás esetén nem találgatunk: pontosan azt a címet állítjuk be.
+  let utana;
+  if (kert) {
+    utana = setLanIp(kert);
+    if (!utana) {
+      return res.status(400).json({
+        error: 'ismeretlen_cim',
+        message: 'Ez a cím most nem tartozik egyetlen hálózati csatolóhoz sem.',
+        tobbi: localIps().map((a) => ({ ip: a.ip, nev: a.name })),
+      });
+    }
+  } else {
+    utana = await detectLanIp();
+  }
+
   res.json({
     ok: true,
     valtozott: elotte !== utana,
     elotte,
     ip: utana,
+    kezi: Boolean(kert),
     base_url: baseUrl(req),
     rogzitett: Boolean(config.publicBaseUrl),
     tobbi: localIps().map((a) => ({ ip: a.ip, nev: a.name })),
@@ -388,7 +406,16 @@ function computeResults() {
     return {
       key: c.key,
       label: c.label,
-      winner: best ? { number: best.number, label: best.label, avg: best.criteria.find((p) => p.key === c.key).avg } : null,
+      // A team_id azért kell, hogy az eredményhirdetésen a csapat saját színét
+      // tudjuk a kategóriakártyára tenni.
+      winner: best
+        ? {
+            team_id: best.team_id,
+            number: best.number,
+            label: best.label,
+            avg: best.criteria.find((p) => p.key === c.key).avg,
+          }
+        : null,
     };
   });
 
@@ -399,7 +426,11 @@ adminRouter.get('/results', (_req, res) => {
   res.json({
     ...computeResults(),
     stats: {
+      // A kinyomtatott cetlik egy resze senkihez sem kerul, ezert a "hanyan
+      // szavaztak" viszonyitasi alapja a belepett szavazok szama, nem a
+      // kinyomtatott mennyiseg.
       voters_total: db.prepare('SELECT COUNT(*) AS c FROM voters').get().c,
+      voters_activated: db.prepare('SELECT COUNT(*) AS c FROM voters WHERE is_activated = 1').get().c,
       voters_voted: db.prepare('SELECT COUNT(DISTINCT voter_id) AS c FROM submissions').get().c,
       submissions: db.prepare('SELECT COUNT(*) AS c FROM submissions').get().c,
       votes: db.prepare('SELECT COUNT(*) AS c FROM votes').get().c,
@@ -462,6 +493,29 @@ adminRouter.post('/reset', (req, res) => {
   });
 });
 
+/* ---------- mintaadatok teszteleshez ---------- */
+
+adminRouter.post('/mintaadatok', (req, res) => {
+  const body = req.body || {};
+  if (String(body.confirm || '') !== 'MINTA') {
+    return res.status(400).json({
+      error: 'confirm_required',
+      message: 'A generálashoz küldd a { "confirm": "MINTA" } mezőt.',
+    });
+  }
+  try {
+    const r = mintaadatokat({ arany: body.arany });
+    res.json({
+      ok: true,
+      ...r,
+      message: `${r.csapatok} csapat kitöltve, ${r.szavazok} szavazó adott le `
+        + `${r.lapok} szavazólapot. A szavazás nyitva, a ${TEST_CODE} cetli szavazatai üresek.`,
+    });
+  } catch (err) {
+    res.status(409).json({ error: 'nem_generalhato', message: err.message });
+  }
+});
+
 /* ---------- nyomtathato PDF-ek ---------- */
 
 function sendPdf(res, req, buffer, filename) {
@@ -495,8 +549,12 @@ adminRouter.get('/print/teams.pdf', async (req, res, next) => {
       code: formatCode(t.api_code),
       console_url: `${base}/csapat?kod=${formatCode(t.api_code)}`,
     }));
-    const pdf = await teamSheetPdf(teams, { base });
-    sendPdf(res, req, pdf, 'nitrogames-csapat-belepok.pdf');
+    // A szempontok a lapra is rákerülnek, hogy a csapatok tudják, mire mennek.
+    const criteria = db
+      .prepare('SELECT label, description FROM criteria WHERE active = 1 ORDER BY position, id')
+      .all();
+    const pdf = await teamSheetPdf(teams, { base, repoUrl: config.starterRepoUrl, criteria });
+    sendPdf(res, req, pdf, 'nitrogames-csapat-kezdocsomag.pdf');
   } catch (err) {
     next(err);
   }

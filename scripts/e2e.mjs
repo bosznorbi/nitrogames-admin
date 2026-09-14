@@ -1,22 +1,104 @@
 /**
- * Vegigmegy a teljes folyamaton es a hatareseteken egy FUTO szerver ellen.
- * Adatot ir, ezert csak fejlesztoi peldanyon futtasd.
+ * Vegigmegy a teljes folyamaton es a hatareseteken.
  *
- *   npm start            # masik terminalban
  *   npm test
  *
- * Mas cim vagy jelszo:  BASE=http://localhost:4000 ADMIN_PASSWORD=... npm test
+ * A teszt TOROL: minden csapatot es nem-teszt szavazot eldob, majd ujakat
+ * general, tehat a csapatkodok es a QR-azonositok is ujak lesznek. Ezert
+ * alapbol SAJAT, eldobhato peldanyt indit sajat adatbazissal, es a vegen
+ * eltakaritja. Igy a fejlesztoi adatok, foleg a mar kinyomtatott kodok,
+ * erintetlenek maradnak.
+ *
+ * Ha megis egy mar futo szerver ellen kell (annak az adatbazisat kiuriti):
+ *   BASE=http://localhost:3000 ADMIN_PASSWORD=... npm test
  */
 import 'dotenv/config';
 import zlib from 'node:zlib';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
-const BASE = (process.env.BASE || 'http://localhost:3000').replace(/\/+$/, '');
-const PASSWORD = process.env.ADMIN_PASSWORD || 'nitrogames';
+const GYOKER = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const sajatPeldany = !process.env.BASE;
 
-if (!/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(BASE) && !process.argv.includes('--force')) {
-  console.log(`A teszt adatot ír. Nem localhost cím: ${BASE}`);
-  console.log('Ha tényleg ezt akarod, add hozzá a --force kapcsolót.');
-  process.exit(1);
+let szerver = null;
+let ideiglenesDir = null;
+
+/**
+ * A szerver kilepese utan szabadul fel a sqlite fajl, ezert eloszor megvarjuk
+ * a gyerekfolyamatot, es csak utana toroljuk a konyvtarat. A torles Windowson
+ * igy is beleszaladhat egy pillanatnyi zarba, ezert par kort ujraprobalja.
+ */
+async function takarits() {
+  if (szerver) {
+    const vege = new Promise((r) => szerver.once('exit', r));
+    try { szerver.kill(); } catch {}
+    await Promise.race([vege, new Promise((r) => setTimeout(r, 3000))]);
+    szerver = null;
+  }
+  if (ideiglenesDir) {
+    for (let i = 0; i < 10; i++) {
+      try { fs.rmSync(ideiglenesDir, { recursive: true, force: true }); break; }
+      catch { await new Promise((r) => setTimeout(r, 200)); }
+    }
+    ideiglenesDir = null;
+  }
+}
+
+// Vegso mentoov: ha a folyamat varatlanul all le, a szervert mindenkeppen
+// lojuk ki, hogy ne maradjon arva peldany.
+process.on('exit', () => { if (szerver) { try { szerver.kill(); } catch {} } });
+for (const jel of ['SIGINT', 'SIGTERM']) {
+  process.on(jel, () => { takarits().finally(() => process.exit(1)); });
+}
+
+let BASE;
+let PASSWORD;
+
+if (sajatPeldany) {
+  PASSWORD = 'e2e-proba';
+  ideiglenesDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nitrogames-e2e-'));
+  const port = 3100 + Math.floor(Math.random() * 800);
+  BASE = `http://127.0.0.1:${port}`;
+
+  szerver = spawn(process.execPath, [path.join(GYOKER, 'src', 'server.js')], {
+    cwd: GYOKER,
+    stdio: 'ignore',
+    env: {
+      ...process.env,
+      PORT: String(port),
+      DATA_DIR: ideiglenesDir,
+      ADMIN_PASSWORD: PASSWORD,
+      SESSION_SECRET: 'e2e-teszt-titok',
+      PUBLIC_BASE_URL: '',
+      NODE_ENV: 'test',
+    },
+  });
+
+  let elindult = false;
+  for (let i = 0; i < 60; i++) {
+    try {
+      if ((await fetch(`${BASE}/healthz`)).ok) { elindult = true; break; }
+    } catch {}
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  if (!elindult) {
+    console.log('A teszt saját szerverpéldánya nem indult el.');
+    process.exit(1);
+  }
+  console.log(`Saját, eldobható példány: ${BASE}`);
+} else {
+  BASE = process.env.BASE.replace(/\/+$/, '');
+  PASSWORD = process.env.ADMIN_PASSWORD || 'nitrogames';
+
+  if (!/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(BASE) && !process.argv.includes('--force')) {
+    console.log(`A teszt adatot ír. Nem localhost cím: ${BASE}`);
+    console.log('Ha tényleg ezt akarod, add hozzá a --force kapcsolót.');
+    process.exit(1);
+  }
+  console.log(`FIGYELEM: a(z) ${BASE} adatbázisát ürítem, a csapatkódok újragenerálódnak.`);
 }
 
 let pass = 0;
@@ -116,7 +198,7 @@ await admin.fetch('/api/admin/settings', {
 
 const overview = await admin.fetch('/api/admin/overview');
 check('9 csapat létrejött', overview.body.counts.teams === 9);
-check('a teszt kód mindig létezik', overview.body.test_code === 'TESZT');
+check('a teszt kód mindig létezik', overview.body.test_code === 'TEST');
 
 const teamsRes = await admin.fetch('/api/admin/teams');
 const teams = teamsRes.body.teams;
@@ -127,18 +209,18 @@ check('kezdetben egy csapat sincs kész', teams.every((t) => !t.ready));
 
 const votersRes = await admin.fetch('/api/admin/voters');
 const codes = votersRes.body.voters.map((v) => v.code);
-check('TESZT kód a listában van', codes.includes('TESZT'));
-check('a többi kód 4 betű', codes.filter((c) => c !== 'TESZT').every((c) => /^[A-Z]{4}$/.test(c)), codes.slice(0, 4).join(','));
+check('TEST kód a listában van', codes.includes('TEST'));
+check('minden kód 4 betű', codes.every((c) => /^[A-Z]{4}$/.test(c)), codes.slice(0, 4).join(','));
 
 console.log('\n--- szavazoi belepes ---');
 const teszt = new Session();
-check('TESZT kóddal be lehet lépni', (await teszt.fetch('/api/session/code', { json: { code: 'TESZT' } })).status === 200);
-check('kisbetűvel is', (await new Session().fetch('/api/session/code', { json: { code: 'teszt' } })).status === 200);
+check('TEST kóddal be lehet lépni', (await teszt.fetch('/api/session/code', { json: { code: 'TEST' } })).status === 200);
+check('kisbetűvel is', (await new Session().fetch('/api/session/code', { json: { code: 'test' } })).status === 200);
 check('ismeretlen kód 404', (await new Session().fetch('/api/session/code', { json: { code: 'ZZZZ' } })).status === 404);
 check('névvel belépés megszűnt', (await new Session().fetch('/api/session/join', { json: { name: 'Valaki' } })).status === 404);
 
 const qrLogin = new Session();
-const loginUrl = new URL(votersRes.body.voters.find((v) => v.code !== 'TESZT').login_url).pathname;
+const loginUrl = new URL(votersRes.body.voters.find((v) => v.code !== 'TEST').login_url).pathname;
 const redir = await qrLogin.fetch(loginUrl);
 check('QR belépés a főoldalra visz', redir.status === 302 && redir.location.startsWith('/?belepes='));
 
@@ -256,7 +338,7 @@ check('szavazói PDF oldalszáma (16 / A4)', pdfPages(vPdf.body) === Math.ceil(c
 const tPdf = await admin.fetch('/api/admin/print/teams.pdf', { binary: true });
 check('csapat PDF', tPdf.status === 200 && tPdf.body.subarray(0, 5).toString() === '%PDF-');
 const aktivCsapat = (await admin.fetch('/api/admin/overview')).body.counts.teams;
-check('csapat PDF három per lap', pdfPages(tPdf.body) === Math.ceil(aktivCsapat / 3), `${pdfPages(tPdf.body)} oldal / ${aktivCsapat} csapat`);
+check('csapat PDF kettő per lap (A5)', pdfPages(tPdf.body) === Math.ceil(aktivCsapat / 2), `${pdfPages(tPdf.body)} oldal / ${aktivCsapat} csapat`);
 check('PDF jelszó nélkül nem érhető el', (await new Session().fetch('/api/admin/print/teams.pdf')).status === 401);
 check('CSV export megszűnt', (await admin.fetch('/api/admin/export/votes.csv')).status === 404);
 
@@ -275,7 +357,7 @@ await admin.fetch('/api/admin/voters', { json: { count: 5 } });
 const kevesebb = (await admin.fetch('/api/admin/voters')).body.voters;
 check('a szavazószám pontosan beállítható', kevesebb.filter((v) => !v.is_test).length === 5,
   String(kevesebb.filter((v) => !v.is_test).length));
-check('a TESZT kód a csökkentést is túléli', kevesebb.some((v) => v.is_test));
+check('a TEST kód a csökkentést is túléli', kevesebb.some((v) => v.is_test));
 await admin.fetch('/api/admin/voters', { json: { count: 12 } });
 
 console.log('\n--- holtverseny ---');
@@ -292,5 +374,48 @@ for (const [path, expect] of [
   check(`${path} -> ${expect}`, r.status === expect, `kapott: ${r.status}`);
 }
 
+console.log('\n--- mintaadatok ---');
+check('megerősítés nélkül 400',
+  (await admin.fetch('/api/admin/mintaadatok', { json: {} })).status === 400);
+check('jelszó nélkül 401',
+  (await new Session().fetch('/api/admin/mintaadatok', { json: { confirm: 'MINTA' } })).status === 401);
+
+const minta = await admin.fetch('/api/admin/mintaadatok', { json: { confirm: 'MINTA' } });
+check('a generálás lefut', minta.status === 200 && minta.body.ok === true, JSON.stringify(minta.body));
+
+const mintaCsapatok = (await admin.fetch('/api/admin/teams')).body.teams;
+check('minden csapat készre töltődött', mintaCsapatok.every((t) => t.ready),
+  mintaCsapatok.filter((t) => !t.ready).map((t) => t.number).join(','));
+check('a csapatkódok a generálástól sem változtak',
+  JSON.stringify(mintaCsapatok.map((t) => `${t.number}:${t.code}:${t.public_id}`)) === JSON.stringify(elotte));
+
+const mintaSzavazok = (await admin.fetch('/api/admin/voters')).body.voters;
+check('a TEST cetli szavazat nélkül marad', mintaSzavazok.find((v) => v.is_test).voted_teams === 0);
+check('a többi szavazó viszont szavazott',
+  mintaSzavazok.filter((v) => !v.is_test).some((v) => v.voted_teams > 0));
+check('a generálás megnyitja a szavazást',
+  (await admin.fetch('/api/admin/overview')).body.settings.voting_open === '1');
+
+// A ki nem osztott cetlik senkihez sem tartoznak: a szavazottak szamat a
+// belepettekhez merjuk, nem a kinyomtatott mennyiseghez.
+const mintaStat = (await admin.fetch('/api/admin/results')).body.stats;
+check('a belépett szavazók száma külön látszik', typeof mintaStat.voters_activated === 'number');
+check('a belépettek nem többen vannak a kinyomtatott cetliknél',
+  mintaStat.voters_activated <= mintaStat.voters_total);
+check('a ki nem osztott cetli nem számít belépettnek',
+  mintaStat.voters_activated < mintaStat.voters_total,
+  `belépett ${mintaStat.voters_activated}, cetli ${mintaStat.voters_total}`);
+check('mindenki szavazott, aki belépett', mintaStat.voters_voted === mintaStat.voters_activated,
+  `${mintaStat.voters_voted} / ${mintaStat.voters_activated}`);
+check('a TEST kóddal még lehet szavazni',
+  (await teszt.fetch(`/api/teams/${votePublicId}/vote`, { method: 'POST', json: { scores } })).status === 200);
+
+// Ha idegen szerver ellen futunk, ne hagyjunk maga után mintaadatot. A saját
+// példány adatbázisát úgyis eldobjuk, ott felesleges kör.
+if (!sajatPeldany) {
+  await admin.fetch('/api/admin/reset', { json: { confirm: 'TOROL', scope: 'all' } });
+}
+
 console.log(`\n${pass} rendben, ${fail} hiba\n`);
+await takarits();
 process.exit(fail ? 1 : 0);

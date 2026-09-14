@@ -143,7 +143,7 @@ function uploadCard(kind, title, spec, preview) {
             + `Az API viszont pontos méretet vár, ha kódból töltötök fel.`)
         ),
         el('div', { class: 'row tight' },
-          el('input', { type: 'file', id: `up_${kind}`, accept: 'image/png,image/jpeg,image/webp', style: { flex: '1', minWidth: '160px' } }),
+          el('input', { type: 'file', id: `up_${kind}`, accept: 'image/png,image/jpeg,image/webp', style: { flex: '1 1 140px', minWidth: '0' } }),
           el('button', { class: 'mini danger', id: `del_${kind}` }, 'Törlés')
         ),
         el('div', { class: 'small muted', id: `st_${kind}`, style: { marginTop: '8px' } })
