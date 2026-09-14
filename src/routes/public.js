@@ -1,7 +1,7 @@
 import express from 'express';
 import { config, baseUrl } from '../config.js';
 import { RULES, db, getBool, teamLabel } from '../db.js';
-import { VOTER_COOKIE, requireVoter, rateLimit, voterCookieOpts } from '../middleware/auth.js';
+import { VOTER_COOKIE, requireVoter, rateLimit, signVoterSession, voterCookieOpts } from '../middleware/auth.js';
 import { normalizeCode } from '../lib/ids.js';
 
 export const publicRouter = express.Router();
@@ -49,7 +49,7 @@ publicRouter.post(
     if (!code) return res.status(400).json({ error: 'missing_code', message: 'Írd be a kódot a papírkádról.' });
     const voter = db.prepare('SELECT * FROM voters WHERE code = ?').get(code);
     if (!voter) return res.status(404).json({ error: 'unknown_code', message: 'Nincs ilyen kód. Ellenőrizd a papírkádat.' });
-    res.cookie(VOTER_COOKIE, voter.token, voterCookieOpts());
+    res.cookie(VOTER_COOKIE, signVoterSession(voter.token), voterCookieOpts());
     db.prepare("UPDATE voters SET is_activated = 1, last_seen_at = datetime('now') WHERE id = ?").run(voter.id);
     res.json({ ok: true });
   }

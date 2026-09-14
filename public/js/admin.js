@@ -152,12 +152,17 @@ $('seedDemo').addEventListener('click', async () => {
   btn.textContent = eredeti;
 });
 
-$('resetVotes').addEventListener('click', () => reset('votes', 'Törlöd az összes szavazatot?'));
+$('resetVotes').addEventListener('click', () => reset('votes', [
+  'Törlöd az összes szavazatot?',
+  '',
+  'A szavazók kilépnek a telefonjukról, de a cetlijükkel újra beléphetnek.',
+].join('\n')));
 $('resetAll').addEventListener('click', () =>
   reset('all', [
     'Nullázod a szavazatokat ÉS a csapatok által feltöltött tartalmat (nevek, leírások, képek)?',
     '',
     'A csapatkódok, a QR-kódok és a szavazói cetlik érvényesek maradnak, tehát a kinyomtatott lapok jók lesznek.',
+    'A szavazók kilépnek a telefonjukról, de a cetlijükkel újra beléphetnek.',
   ].join('\n')));
 
 async function reset(scope, question) {

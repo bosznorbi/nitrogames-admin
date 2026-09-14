@@ -466,6 +466,11 @@ adminRouter.post('/reset', (req, res) => {
     db.prepare('DELETE FROM votes').run();
     db.prepare('DELETE FROM submissions').run();
 
+    // A telefonokon bent maradt munkamenetek is szunjenek meg: aki eddig be
+    // volt lepve, az most kilep. A papir QR-jet ujra beolvasva visszalephet.
+    setSetting('voter_epoch', String(Date.now()));
+    db.prepare('UPDATE voters SET is_activated = 0, last_seen_at = NULL').run();
+
     if (scope === 'all') {
       // A csapatok es a szavazok azonositoja megmarad: a kodjaik es a
       // QR-jeik elore ki vannak nyomtatva, azokat nem szabad eldobni.
@@ -479,7 +484,6 @@ adminRouter.post('/reset', (req, res) => {
         name = NULL, game_name = NULL, tagline = NULL, description = NULL,
         background_file = NULL, icon_file = NULL,
         qr_fetched_at = NULL, updated_at = datetime('now')`).run();
-      db.prepare('UPDATE voters SET is_activated = 0, last_seen_at = NULL').run();
     }
   })();
 

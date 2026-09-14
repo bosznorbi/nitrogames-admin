@@ -145,6 +145,9 @@ for (const t of db.prepare('SELECT id, public_id, api_code FROM teams').all()) {
  */
 const DEFAULT_SETTINGS = {
   voting_open: '0',
+  // Ennel regebben kiadott szavazoi sutik ervenytelenek. A nullazas allitja
+  // elore, igy mindenki kilep, de a kinyomtatott QR-ek ervenyesek maradnak.
+  voter_epoch: '0',
 };
 
 export const RULES = {
@@ -153,7 +156,7 @@ export const RULES = {
 };
 
 // A korabbi, mar nem hasznalt beallitasok kitakaritasa.
-db.prepare(`DELETE FROM settings WHERE key NOT IN ('voting_open')`).run();
+db.prepare(`DELETE FROM settings WHERE key NOT IN ('voting_open', 'voter_epoch')`).run();
 
 export function getSetting(key) {
   const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);

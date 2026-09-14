@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { config } from '../config.js';
-import { db } from '../db.js';
+import { db, getSetting } from '../db.js';
 import { normalizeCode, safeEqual } from '../lib/ids.js';
 
 export const VOTER_COOKIE = 'ng_voter';
@@ -27,6 +27,30 @@ export function verifyAdminSession(value) {
   return Number(exp) > Date.now();
 }
 
+/*
+ * A szavazoi suti alairva es idobelyeggel utazik. A tokent nem cserelhetjuk,
+ * mert az a kinyomtatott QR-ben all (/v/<token>), ezert a kileptetes ugy
+ * mukodik, hogy az admin elore allitja a "voter_epoch" beallitast: az annal
+ * regebben kiadott sutik ervenyuket vesztik. A papir ettol ervenyes marad,
+ * ujra beolvasva mindenki visszalep.
+ */
+export function signVoterSession(token) {
+  const kiadva = String(Date.now());
+  return `${token}.${kiadva}.${hmac(`${token}.${kiadva}`)}`;
+}
+
+function readVoterSession(value) {
+  if (typeof value !== 'string') return null;
+  const reszek = value.split('.');
+  if (reszek.length !== 3) return null;
+  const [token, kiadva, sig] = reszek;
+  if (!safeEqual(sig, hmac(`${token}.${kiadva}`))) return null;
+
+  const epoch = Number(getSetting('voter_epoch') || 0);
+  if (Number(kiadva) < epoch) return null;
+  return token;
+}
+
 export function cookieOpts(maxAge) {
   return {
     httpOnly: true,
@@ -43,7 +67,7 @@ export const voterCookieOpts = () => cookieOpts(VOTER_TTL_MS);
 /* ---------- middleware ---------- */
 
 export function loadVoter(req, _res, next) {
-  const token = req.cookies?.[VOTER_COOKIE];
+  const token = readVoterSession(req.cookies?.[VOTER_COOKIE]);
   req.voter = null;
   if (token) {
     const v = db.prepare('SELECT * FROM voters WHERE token = ?').get(token);

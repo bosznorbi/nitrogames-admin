@@ -227,6 +227,28 @@ const kilepes = await kilepo.fetch('/logout');
 check('a /logout átirányít a belépésre', kilepes.status === 302, String(kilepes.status));
 check('kilépés után nincs munkamenet', (await kilepo.fetch('/api/config')).body.authenticated === false);
 
+// A nullazas a telefonokon bent maradt munkameneteket is megszunteti, de a
+// kinyomtatott QR-t ujra beolvasva mindenki visszalep.
+const bentmaradt = new Session();
+await bentmaradt.fetch('/api/session/code', { json: { code: 'TEST' } });
+check('nullázás előtt belépve van', (await bentmaradt.fetch('/api/config')).body.authenticated === true);
+await admin.fetch('/api/admin/reset', { json: { confirm: 'TOROL', scope: 'votes' } });
+check('a nullázás kilépteti a szavazókat',
+  (await bentmaradt.fetch('/api/config')).body.authenticated === false);
+
+const ujraBe = new Session();
+const testToken = new URL(
+  (await admin.fetch('/api/admin/voters')).body.voters.find((v) => v.is_test).login_url
+).pathname;
+await ujraBe.fetch(testToken);
+check('a papír QR-rel utána vissza lehet lépni',
+  (await ujraBe.fetch('/api/config')).body.authenticated === true);
+
+// A nullazas a fenti "teszt" munkamenetet is kileptette, ezert visszalepunk:
+// a tobbi ellenorzes mar belepett szavazot var.
+await teszt.fetch('/api/session/code', { json: { code: 'TEST' } });
+check('a teszt munkamenet újra él', (await teszt.fetch('/api/config')).body.authenticated === true);
+
 const qrLogin = new Session();
 const loginUrl = new URL(votersRes.body.voters.find((v) => v.code !== 'TEST').login_url).pathname;
 const redir = await qrLogin.fetch(loginUrl);
@@ -415,6 +437,8 @@ check('a ki nem osztott cetli nem számít belépettnek',
   `belépett ${mintaStat.voters_activated}, cetli ${mintaStat.voters_total}`);
 check('mindenki szavazott, aki belépett', mintaStat.voters_voted === mintaStat.voters_activated,
   `${mintaStat.voters_voted} / ${mintaStat.voters_activated}`);
+// A kozbeni nullazasok kileptettek: a valosagban is ujra be kell olvasni.
+await teszt.fetch('/api/session/code', { json: { code: 'TEST' } });
 check('a TEST kóddal még lehet szavazni',
   (await teszt.fetch(`/api/teams/${votePublicId}/vote`, { method: 'POST', json: { scores } })).status === 200);
 

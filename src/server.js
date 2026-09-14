@@ -12,6 +12,7 @@ import {
   VOTER_COOKIE,
   loadVoter,
   requireAdminPage,
+  signVoterSession,
   voterCookieOpts,
 } from './middleware/auth.js';
 
@@ -83,7 +84,7 @@ app.get('/logout', (_req, res) => {
 app.get('/v/:token', (req, res) => {
   const voter = db.prepare('SELECT * FROM voters WHERE token = ?').get(req.params.token);
   if (!voter) return res.redirect('/belepes?hiba=ismeretlen');
-  res.cookie(VOTER_COOKIE, voter.token, voterCookieOpts());
+  res.cookie(VOTER_COOKIE, signVoterSession(voter.token), voterCookieOpts());
   db.prepare("UPDATE voters SET is_activated = 1, last_seen_at = datetime('now') WHERE id = ?").run(voter.id);
 
   const next = String(req.query.next || '');
