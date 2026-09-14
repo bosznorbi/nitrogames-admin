@@ -31,9 +31,6 @@
     <li class="tile"></li><li class="tile"></li><li class="tile"></li>
   </ul>
 
-  <p class="small muted center" id="hint" style="margin:12px 0 0">
-    Olvasd be a csapat asztalán lévő QR-kódot.
-  </p>
 </main>
 
 <!-- Első belépéskor pár másodpercre megjelenik, aztán eltűnik. -->
@@ -55,7 +52,19 @@ const justVoted = params.get('szavaztam');
 const belepett = params.get('belepes') === '1';
 if (justVoted || belepett) history.replaceState(null, '', '/');
 
-function tileNode(t, celebrate) {
+/*
+ * Szürke csempére koppintani nem visz sehova: a szavazólap csak a csapat
+ * QR-kódjával nyílik. Aki ezt nem tudja, az nyomkodni kezdi, ezért a harmadik
+ * koppintástól megmondjuk neki, mit keressen.
+ */
+let szurkeKoppintas = 0;
+
+function szurkereKoppintott() {
+  szurkeKoppintas++;
+  if (szurkeKoppintas >= 3) toast('Keresd meg a csapat asztalán a QR-kódot, és olvasd be.');
+}
+
+function tileNode(t, celebrate, index = 0) {
   const art = el('div', {
     class: `tile-art ${t.icon_url ? '' : 'noart'}`,
     style: t.icon_url ? { backgroundImage: `url("${t.icon_url}")` } : {},
@@ -64,7 +73,9 @@ function tileNode(t, celebrate) {
   const tartalom = [art, el('div', { class: 'tile-name' }, t.label)];
   const kozos = {
     class: `tile ${t.voted ? 'done' : ''} ${celebrate ? 'celebrate' : ''}`,
-    style: { '--team': t.accent_color },
+    // A --hullam a csempe átlós sorszáma a 3x3-as rácsban: ettől fut végig
+    // az ünneplő hullám balról fentről jobbra lefelé.
+    style: { '--team': t.accent_color, '--hullam': String(Math.floor(index / 3) + (index % 3)) },
     dataset: { id: t.public_id },
   };
 
@@ -72,7 +83,7 @@ function tileNode(t, celebrate) {
   return el('li', {},
     t.voted
       ? el('a', { ...kozos, href: `/t/${t.public_id}`, title: `${t.label}: pontszám módosítása` }, ...tartalom)
-      : el('div', { ...kozos, title: t.label }, ...tartalom)
+      : el('div', { ...kozos, title: t.label, onclick: szurkereKoppintott }, ...tartalom)
   );
 }
 
@@ -116,10 +127,17 @@ async function load() {
           'A szavazás még nem indult el. Ez az oldal a tiéd, nyugodtan bezárhatod.')
   );
 
-  $('tiles').replaceChildren(...data.teams.map((t) => tileNode(t, t.public_id === justVoted)));
-  $('hint').textContent = remaining === 0 && data.total
-    ? 'Minden játékot pontoztál. Köszönjük!'
-    : 'Olvasd be a csapat asztalán lévő QR-kódot.';
+  $('tiles').replaceChildren(...data.teams.map((t, i) => tileNode(t, t.public_id === justVoted, i)));
+
+  /*
+   * A rács alatt szándékosan nincs semmilyen felirat: a súgó és a köszönöm is
+   * helyet vett el, és emiatt görgethető lett az oldal. A fenti "9 / 9 mind
+   * megvan" és az ünneplő hullám elmondja ugyanazt. Aki meg nem érti, miért
+   * nem nyílik a szürke csempe, annak a harmadik koppintásnál szólunk.
+   */
+  const kesz = Boolean(remaining === 0 && data.total);
+  $('tiles').classList.toggle('mind-kesz', kesz);
+  document.querySelector('.progress-ring').classList.toggle('mind-kesz', kesz);
 
   if (justVoted) {
     const node = document.querySelector(`.tile[data-id="${CSS.escape(justVoted)}"]`);

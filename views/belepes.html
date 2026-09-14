@@ -24,6 +24,7 @@
   </p>
 
   <div class="note err" id="err" hidden></div>
+  <div class="note ok" id="info" hidden></div>
 
   <div class="card">
     <h2 style="margin-top:0">Nem megy a beolvasás?</h2>
@@ -58,6 +59,11 @@ const target = next && next.startsWith('/') && !next.startsWith('//') ? next : '
 if (params.get('hiba') === 'ismeretlen') {
   $('err').hidden = false;
   $('err').textContent = 'Ez a belépő kód nem érvényes. Kérj újat a szervezőktől, vagy írd be a kódot kézzel.';
+}
+
+if (params.get('kilepes') === '1') {
+  $('info').hidden = false;
+  $('info').textContent = 'Kijelentkeztél. Olvasd be a QR-kódot, vagy írd be a kódot kézzel.';
 }
 
 api('/api/config')

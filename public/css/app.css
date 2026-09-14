@@ -835,3 +835,76 @@ body.has-bg .note { background: rgba(8, 13, 22, 0.88); }
 @media (prefers-reduced-motion: reduce) {
   *, body::after { animation: none !important; transition-duration: 0.01ms !important; }
 }
+
+/* Negyzet alaku ikongomb, a .mini szoveges valtozata melle. */
+.mini.ikon {
+  display: inline-grid;
+  place-items: center;
+  /* A szöveges .mini magassága 44px, hogy egy sorban álljanak. */
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  flex: 0 0 auto;
+}
+
+.mini.ikon svg { width: 19px; height: 19px; display: block; }
+
+/* ---------- "mind megvan" ünneplés ---------- */
+
+/*
+ * Amikor mind a kilenc játék pontozva van, a rács egy átlós hullámban
+ * végigugrik: a bal felső csempétől indul, és a jobb alsóig fut. A --hullam
+ * a csempe átlós sorszáma (sor + oszlop), ebből jön a késleltetés.
+ * A steps() miatt a mozgás kockás, mint a régi játékokban.
+ */
+.tiles.mind-kesz .tile {
+  animation: csempe-hullam 0.62s steps(7) both;
+  animation-delay: calc(var(--hullam, 0) * 85ms);
+}
+
+@keyframes csempe-hullam {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(-13px); filter: brightness(2.1); }
+  70% { transform: translateY(0); filter: none; }
+  85% { transform: translateY(-4px); }
+  100% { transform: translateY(0); }
+}
+
+/* A hullám érkezésekor a csempe kerete felvillan a csapat színében. */
+.tiles.mind-kesz .tile::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 3px solid var(--team, var(--green));
+  opacity: 0;
+  pointer-events: none;
+  animation: keret-villan 0.62s steps(4) both;
+  animation-delay: calc(var(--hullam, 0) * 85ms);
+}
+
+@keyframes keret-villan {
+  0% { opacity: 0; }
+  35% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* A hullám után a számláló is kap egy pukkanást. */
+.progress-ring.mind-kesz b {
+  display: inline-block;
+  color: var(--green);
+  animation: szam-pukkan 0.5s steps(5) both;
+  animation-delay: 430ms;
+}
+
+@keyframes szam-pukkan {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+/* Aki kéri, annak nyugodt marad minden. */
+@media (prefers-reduced-motion: reduce) {
+  .tiles.mind-kesz .tile,
+  .tiles.mind-kesz .tile::after,
+  .progress-ring.mind-kesz b { animation: none; }
+}

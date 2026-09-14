@@ -260,6 +260,21 @@ async function loadTeams() {
         el('td', { 'data-label': 'Műveletek' },
           el('div', { class: 'row tight' },
             el('a', { class: 'mini', href: t.vote_url, target: '_blank', rel: 'noopener' }, 'Szavazólap'),
+            // A csapat saját konzolja a kódjukkal, új lapon: innen látjuk,
+            // hol tartanak, és szükség esetén helyettük is fel tudunk tölteni.
+            el('a', {
+              class: 'mini ikon',
+              href: `/csapat?kod=${encodeURIComponent(t.code)}`,
+              target: '_blank',
+              rel: 'noopener',
+              title: `${t.label}: csapat konzol megnyitása`,
+              'aria-label': `${t.label}: csapat konzol megnyitása`,
+              html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                       <path d="M14 4h6v6"/><path d="M20 4l-8.5 8.5"/>
+                       <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>
+                     </svg>`,
+            }),
             el('button', { class: 'mini danger', onclick: () => removeTeam(t) }, 'Törlés')
           )
         )

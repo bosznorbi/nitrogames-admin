@@ -68,6 +68,17 @@ app.get('/t/:publicId', view('vote.html'));
 app.get('/csapat', view('csapat.html'));
 app.get('/team', (req, res) => res.redirect('/csapat' + (req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '')));
 
+/*
+ * Kilepes a szavazobol. A belepes egyszeri es tartos, ezert magatol nincs
+ * kijelentkezes: erre valo ez a cim. Teszteleshez kell, amikor egy telefonrol
+ * tobb cetlit akarunk kiprobalni, es akkor is, ha valaki mas telefonjan
+ * maradt bent. Az admin munkamenetet nem bantja.
+ */
+app.get('/logout', (_req, res) => {
+  res.clearCookie(VOTER_COOKIE, { path: '/', sameSite: 'lax', secure: config.isProd });
+  res.redirect('/belepes?kilepes=1');
+});
+
 /** Szemelyes belepteto link (a papir QR ide mutat). */
 app.get('/v/:token', (req, res) => {
   const voter = db.prepare('SELECT * FROM voters WHERE token = ?').get(req.params.token);

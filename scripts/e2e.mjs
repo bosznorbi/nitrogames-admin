@@ -219,6 +219,14 @@ check('kisbetűvel is', (await new Session().fetch('/api/session/code', { json: 
 check('ismeretlen kód 404', (await new Session().fetch('/api/session/code', { json: { code: 'ZZZZ' } })).status === 404);
 check('névvel belépés megszűnt', (await new Session().fetch('/api/session/join', { json: { name: 'Valaki' } })).status === 404);
 
+// Kijelentkezes: a belepes tartos, ezert csak ezen a cimen lehet kilepni.
+const kilepo = new Session();
+await kilepo.fetch('/api/session/code', { json: { code: 'TEST' } });
+check('kilépés előtt belépve van', (await kilepo.fetch('/api/config')).body.authenticated === true);
+const kilepes = await kilepo.fetch('/logout');
+check('a /logout átirányít a belépésre', kilepes.status === 302, String(kilepes.status));
+check('kilépés után nincs munkamenet', (await kilepo.fetch('/api/config')).body.authenticated === false);
+
 const qrLogin = new Session();
 const loginUrl = new URL(votersRes.body.voters.find((v) => v.code !== 'TEST').login_url).pathname;
 const redir = await qrLogin.fetch(loginUrl);
