@@ -8,17 +8,17 @@
  * Generalva: 2026-09-14 a scripts/kodokat-general.mjs szkripttel.
  */
 
-/** Csapatok: a kod a konzol es az API kulcsa, a publicId a szavazolap QR-jeben van. */
+/** Csapatok: a kod a konzol es az API kulcsa, a publicId a szavazolap cimeben van (A-445-531). */
 export const CSAPAT_KODOK = [
-  { szam: 1, kod: 'AREK5SCV', publicId: 'n_lf-Eglqlvs' },
-  { szam: 2, kod: 'B75NH25U', publicId: 'Xq688eedUJ99' },
-  { szam: 3, kod: 'CQ68LC2X', publicId: 'IQgb0WHr_PeJ' },
-  { szam: 4, kod: 'DFWEJYUE', publicId: 'dEDnHvtnyeoe' },
-  { szam: 5, kod: 'EBHAJEMB', publicId: '1C4DJc1LkW-1' },
-  { szam: 6, kod: 'F52GFLW5', publicId: 'Cab7shHJuVuT' },
-  { szam: 7, kod: 'G2Y53AKU', publicId: 'PQ3UnzD2ozLl' },
-  { szam: 8, kod: 'HKXKAYM7', publicId: '8kU18KGFTZOk' },
-  { szam: 9, kod: 'JT9Q5ZQ9', publicId: 'wb1R0QIvsW5J' },
+  { szam: 1, kod: 'AREK5SCV', publicId: 'A872415' },
+  { szam: 2, kod: 'B75NH25U', publicId: 'B469819' },
+  { szam: 3, kod: 'CQ68LC2X', publicId: 'C753655' },
+  { szam: 4, kod: 'DFWEJYUE', publicId: 'D773407' },
+  { szam: 5, kod: 'EBHAJEMB', publicId: 'E735925' },
+  { szam: 6, kod: 'F52GFLW5', publicId: 'F548485' },
+  { szam: 7, kod: 'G2Y53AKU', publicId: 'G450604' },
+  { szam: 8, kod: 'HKXKAYM7', publicId: 'H021991' },
+  { szam: 9, kod: 'JT9Q5ZQ9', publicId: 'J062745' },
 ];
 
 /** Szavazocetlik: a kod kezzel beirhato, a token a QR-ben levo /v/<token> cimben. */

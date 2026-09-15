@@ -1,6 +1,6 @@
 import express from 'express';
 import { config, baseUrl } from '../config.js';
-import { RULES, db, getBool, teamLabel } from '../db.js';
+import { RULES, csapatSzavazoKodbol, db, getBool, teamLabel } from '../db.js';
 import { VOTER_COOKIE, requireVoter, rateLimit, signVoterSession, voterCookieOpts } from '../middleware/auth.js';
 import { normalizeCode } from '../lib/ids.js';
 
@@ -43,7 +43,7 @@ publicRouter.get('/config', (req, res) => {
 /** Belepes a papirra nyomtatott kóddal, ha a QR nem olvasodik be. */
 publicRouter.post(
   '/session/code',
-  rateLimit({ windowMs: 60000, max: 20 }),
+  rateLimit({ windowMs: 60000, max: 15, csakHiba: true }),
   (req, res) => {
     const code = normalizeCode(req.body && req.body.code);
     if (!code) return res.status(400).json({ error: 'missing_code', message: 'Írd be a kódot a papírkádról.' });
@@ -73,7 +73,7 @@ publicRouter.get('/home', requireVoter, (req, res) => {
 
 /** Egy csapat szavazolapja. Csak a QR-bol szarmazo public_id-vel erheto el. */
 publicRouter.get('/teams/:publicId', (req, res) => {
-  const team = db.prepare('SELECT * FROM teams WHERE public_id = ?').get(req.params.publicId);
+  const team = csapatSzavazoKodbol(req.params.publicId);
   if (!team || !team.active) return res.status(404).json({ error: 'team_not_found' });
 
   const myScores = {};
@@ -127,7 +127,7 @@ publicRouter.post(
     if (!getBool('voting_open')) {
       return res.status(423).json({ error: 'voting_closed', message: 'A szavazás most zárva van.' });
     }
-    const team = db.prepare('SELECT * FROM teams WHERE public_id = ?').get(req.params.publicId);
+    const team = csapatSzavazoKodbol(req.params.publicId);
     if (!team || !team.active) return res.status(404).json({ error: 'team_not_found' });
 
     const criteria = activeCriteria();

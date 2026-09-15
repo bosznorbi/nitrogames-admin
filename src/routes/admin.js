@@ -6,9 +6,9 @@ import {
   allSettings, createTeam, createVoters, db, getBool, setSetting, teamLabel, TEST_CODE,
 } from '../db.js';
 import { ADMIN_COOKIE, adminCookieOpts, rateLimit, requireAdmin, signAdminSession } from '../middleware/auth.js';
-import { formatCode, safeEqual, slugify } from '../lib/ids.js';
+import { formatCode, formatJatekKod, safeEqual, slugify, szavazoUrl } from '../lib/ids.js';
 import { qrPngBuffer, qrSvg } from '../lib/qr.js';
-import { teamSheetPdf, votersPdf } from '../lib/pdf.js';
+import { jatekQrPdf, teamSheetPdf, votersPdf } from '../lib/pdf.js';
 import { detectLanIp, lanIp, localIps, setLanIp } from '../lib/lan.js';
 import { mintaadatokat } from '../lib/mintaadat.js';
 
@@ -19,7 +19,7 @@ const EDITABLE_SETTINGS = ['voting_open'];
 
 /* ---------- session ---------- */
 
-adminRouter.post('/login', rateLimit({ windowMs: 60000, max: 10 }), (req, res) => {
+adminRouter.post('/login', rateLimit({ windowMs: 60000, max: 10, csakHiba: true }), (req, res) => {
   const password = String((req.body && req.body.password) || '');
   if (!safeEqual(password, config.adminPassword)) {
     return res.status(401).json({ error: 'bad_password', message: 'Hibás jelszó.' });
@@ -133,7 +133,8 @@ function teamRow(t, base) {
     active: Boolean(t.active),
     background_url: t.background_file ? `/uploads/${t.background_file}` : null,
     icon_url: t.icon_file ? `/uploads/${t.icon_file}` : null,
-    vote_url: `${base}/t/${t.public_id}`,
+    vote_url: szavazoUrl(base, t.public_id),
+    vote_code: formatJatekKod(t.public_id),
     ready: missing.length === 0,
     missing,
     voters: db.prepare('SELECT COUNT(*) AS c FROM submissions WHERE team_id = ?').get(t.id).c,
@@ -559,6 +560,29 @@ adminRouter.get('/print/teams.pdf', async (req, res, next) => {
       .all();
     const pdf = await teamSheetPdf(teams, { base, repoUrl: config.starterRepoUrl, criteria });
     sendPdf(res, req, pdf, 'nitrogames-csapat-kezdocsomag.pdf');
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Veszterv: asztali tabla a jatek QR kodjaval, csapatonkent egy fektetett A4.
+ * Akkor kell, ha egy csapat nem tudja beepiteni a QR-t a jatekaba.
+ */
+adminRouter.get('/print/jatek-qr.pdf', async (req, res, next) => {
+  try {
+    const base = baseUrl(req);
+    const teams = db.prepare('SELECT * FROM teams WHERE active = 1 ORDER BY number').all()
+      .map((t) => ({
+        number: t.number,
+        name: t.name,
+        game_name: t.game_name,
+        label: teamLabel(t),
+        vote_url: szavazoUrl(base, t.public_id),
+        vote_code: formatJatekKod(t.public_id),
+      }));
+    const pdf = await jatekQrPdf(teams, { host: new URL(base).host });
+    sendPdf(res, req, pdf, 'nitrogames-jatek-qr.pdf');
   } catch (err) {
     next(err);
   }

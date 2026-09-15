@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#060a12">
+<meta name="robots" content="noindex">
+<title>Nitrogames prezentáció</title>
+<link rel="icon" href="/static/img/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+<link rel="manifest" href="/static/site.webmanifest">
+<link rel="stylesheet" href="/static/css/app.css">
+<style>
+  /*
+   * Kivetítésre készült: minden méret vmin-ben, hogy projektoron és
+   * laptopképernyőn is ugyanúgy kitöltse a képet. Görgetés sehol nincs,
+   * egy dia mindig egy képernyő.
+   */
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    background-size: 44px 44px, 44px 44px;
+  }
+
+  /* ---------- keret ---------- */
+
+  .halado {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 6px;
+    background: var(--panel-2);
+    z-index: 5;
+  }
+
+  .halado i {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--dia, var(--cyan));
+    transition: width 0.25s steps(8);
+  }
+
+  .vezerlo {
+    position: fixed;
+    right: clamp(12px, 2vmin, 26px);
+    bottom: clamp(12px, 2vmin, 26px);
+    display: flex;
+    gap: 8px;
+    z-index: 6;
+  }
+
+  .vezerlo button {
+    font-family: var(--font-display);
+    font-size: clamp(11px, 1.5vmin, 15px);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text);
+    background: var(--panel);
+    border: 3px solid var(--line);
+    box-shadow: var(--px) var(--px) 0 var(--shadow);
+    padding: 8px 12px;
+    cursor: pointer;
+    min-height: 40px;
+  }
+
+  .vezerlo button:hover { border-color: var(--dia, var(--cyan)); color: var(--dia, var(--cyan)); }
+  .vezerlo button:active { transform: translate(var(--px), var(--px)); box-shadow: none; }
+  .vezerlo button[disabled] { opacity: 0.35; cursor: default; transform: none; }
+
+  .szamlalo {
+    position: fixed;
+    left: clamp(12px, 2vmin, 26px);
+    bottom: clamp(12px, 2vmin, 26px);
+    font-family: var(--font-display);
+    font-size: clamp(12px, 1.7vmin, 18px);
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    z-index: 6;
+  }
+
+  .szamlalo b { color: var(--dia, var(--cyan)); font-weight: 400; }
+
+  /* ---------- dia ---------- */
+
+  .szinpad { flex: 1; position: relative; min-height: 0; }
+
+  .dia {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(28px, 7vmin, 90px) clamp(24px, 8vmin, 120px);
+    gap: clamp(10px, 2vmin, 26px);
+  }
+
+  .dia.on { display: flex; animation: dia-be 0.28s steps(5) both; }
+
+  @keyframes dia-be {
+    from { opacity: 0; transform: translateX(2vmin); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .kicker {
+    font-family: var(--font-display);
+    font-size: clamp(13px, 2.1vmin, 25px);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--dia, var(--cyan));
+  }
+
+  .dia h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(32px, 7vmin, 86px);
+    line-height: 1.08;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text);
+    text-shadow: var(--px) var(--px) 0 var(--shadow);
+  }
+
+  .dia ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: clamp(8px, 1.7vmin, 22px);
+  }
+
+  /*
+   * A felsorolásjel abszolút pozíciót kap, nem rácscellát: rácsban a sorban
+   * lévő <b> elemek külön rácselemmé válnának, és szétesne a szöveg.
+   */
+  .dia li {
+    position: relative;
+    padding-left: clamp(26px, 3.6vmin, 46px);
+    font-size: clamp(17px, 3.1vmin, 38px);
+    line-height: 1.34;
+  }
+
+  /* Pixelkocka felsorolásjelnek: ugyanaz a nyelv, mint a csempéken. */
+  .dia li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.46em;
+    width: clamp(12px, 1.7vmin, 21px);
+    height: clamp(12px, 1.7vmin, 21px);
+    background: var(--dia, var(--cyan));
+    box-shadow: 2px 2px 0 var(--shadow);
+  }
+
+  .dia li b { color: var(--dia, var(--cyan)); font-weight: 700; }
+  .dia li span.halk { color: var(--muted); }
+
+  .labjegyzet {
+    margin: clamp(6px, 1.4vmin, 18px) 0 0;
+    font-size: clamp(14px, 2.2vmin, 27px);
+    color: var(--muted);
+    border-left: 4px solid var(--line-lit);
+    padding-left: clamp(10px, 1.6vmin, 20px);
+  }
+
+  /* ---------- cimlap ---------- */
+
+  .dia.cim { align-items: center; text-align: center; justify-content: center; }
+
+  .dia.cim .jel {
+    width: clamp(70px, 14vmin, 190px);
+    height: auto;
+    image-rendering: pixelated;
+  }
+
+  .dia.cim h1 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(44px, 13vmin, 190px);
+    line-height: 1;
+    letter-spacing: 0.06em;
+    color: var(--cyan);
+    text-shadow: calc(var(--px) * 1.5) calc(var(--px) * 1.5) 0 var(--shadow);
+  }
+
+  .dia.cim .alcim {
+    font-family: var(--font-display);
+    font-size: clamp(15px, 3vmin, 40px);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  .dia.cim .lead {
+    max-width: 22em;
+    font-size: clamp(15px, 2.4vmin, 30px);
+    color: var(--muted);
+    margin: 0;
+  }
+
+  /* ---------- kiemelt kartyak (alapszabalyok) ---------- */
+
+  .kartyak {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(10px, 2vmin, 26px);
+  }
+
+  .kartya {
+    background: var(--panel);
+    border: 3px solid var(--line);
+    border-top: 8px solid var(--dia, var(--cyan));
+    box-shadow: var(--px) var(--px) 0 var(--shadow);
+    padding: clamp(12px, 2.4vmin, 30px);
+    display: grid;
+    gap: clamp(6px, 1.2vmin, 14px);
+    align-content: start;
+  }
+
+  .kartya .sorszam {
+    font-family: var(--font-display);
+    font-size: clamp(24px, 5vmin, 62px);
+    line-height: 1;
+    color: var(--dia, var(--cyan));
+  }
+
+  .kartya p {
+    margin: 0;
+    font-size: clamp(15px, 2.6vmin, 33px);
+    line-height: 1.32;
+  }
+
+  @media (max-width: 760px), (max-aspect-ratio: 3/4) {
+    .kartyak { grid-template-columns: 1fr; }
+    .kartya { border-top-width: 6px; }
+    .kartya .sorszam { font-size: clamp(20px, 6vmin, 34px); }
+  }
+
+  /* ---------- ket oszlop ---------- */
+
+  .paros {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(14px, 3vmin, 48px);
+    align-items: start;
+  }
+
+  .paros h3 {
+    margin: 0 0 clamp(6px, 1.2vmin, 14px);
+    font-family: var(--font-display);
+    font-size: clamp(15px, 2.5vmin, 30px);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dia, var(--cyan));
+  }
+
+  @media (max-width: 760px), (max-aspect-ratio: 3/4) {
+    .paros { grid-template-columns: 1fr; gap: clamp(10px, 2vmin, 20px); }
+  }
+
+  /* ---------- parancs ---------- */
+
+  code.parancs {
+    display: inline-block;
+    font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    font-size: clamp(13px, 2.2vmin, 27px);
+    background: rgba(46, 232, 255, 0.09);
+    border: 2px solid var(--line);
+    padding: 3px 8px;
+    word-break: break-all;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dia.on { animation: none; }
+    .halado i { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="halado"><i id="haladoSav"></i></div>
+
+<div class="szinpad" id="szinpad">
+
+  <!-- 1 -->
+  <section class="dia cim on" style="--dia: var(--cyan)" data-cim="Nyitó">
+    <img class="jel" src="/static/img/logo-mark-white.svg" alt="Nitrowise">
+    <h1>NITROGAMES</h1>
+    <div class="alcim">9 csapat &middot; 9 játék &middot; 2 óra</div>
+    <p class="lead">
+      Ma mindenki épít egy kétjátékos játékot AI-jal, aztán végigjátsszuk
+      egymásét, és telefonról pontozunk.
+    </p>
+  </section>
+
+  <!-- 2 -->
+  <section class="dia" style="--dia: var(--magenta)" data-cim="A három alapszabály">
+    <div class="kicker">Csak ez a három kötelező</div>
+    <h2>A három alapszabály</h2>
+    <div class="kartyak">
+      <div class="kartya">
+        <span class="sorszam">1</span>
+        <p>Két játékos, egy gépen. Mindkét kontroller irányítson valamit.</p>
+      </div>
+      <div class="kartya">
+        <span class="sorszam">2</span>
+        <p>Egy percen belül dőljön el, ki a győztes.</p>
+      </div>
+      <div class="kartya">
+        <span class="sorszam">3</span>
+        <p>A kör legyen újraindítható a lap újratöltése nélkül.</p>
+      </div>
+    </div>
+    <p class="labjegyzet">
+      Ezen kívül minden szabad: téma, grafika, mechanika, hangulat. Ami ezután
+      jön, az mind csak javaslat.
+    </p>
+  </section>
+
+  <!-- 3 -->
+  <section class="dia" style="--dia: var(--amber)" data-cim="Mit kaptatok">
+    <div class="kicker">A csomag</div>
+    <h2>Mit kaptatok</h2>
+    <div class="paros">
+      <div>
+        <h3>Az asztalon</h3>
+        <ul>
+          <li><b>Két USB SNES kontroller</b></li>
+          <li>Egy <b>papír</b>: a szerver címe, a csapatkódotok és egy QR</li>
+          <li>Egy <b>laptop</b>, amin fejlesztetek</li>
+        </ul>
+      </div>
+      <div>
+        <h3>A gépen</h3>
+        <ul>
+          <li><b>Kontroller csomag</b>: a padkezelés kész kód, nem kell megírni</li>
+          <li><b>Futó starter</b>: kétjátékos alap, ebből indultok</li>
+          <li><b>AGENTS.md</b> és skillek: az AI ebből tudja a szabályokat</li>
+        </ul>
+      </div>
+    </div>
+    <p class="labjegyzet">
+      A starter AI nélkül is fut. Nem az AI írja meg a kontrollerkezelést, az kész.
+    </p>
+  </section>
+
+  <!-- 4 -->
+  <section class="dia" style="--dia: var(--green)" data-cim="Beüzemelés">
+    <div class="kicker">Három lépés, ebből kettő egy bemásolt prompt</div>
+    <h2>Beüzemelés</h2>
+    <ul>
+      <li><b>1. Nyisd meg a mappát az AI-jal</b>, és másold be az első promptot a README-ből. Ez előkészít mindent.</li>
+      <li><b>2. Teszteld a két kontrollert.</b> Dugd be, nyomj végig minden gombot. Ha kiírja, hogy <b>MINDEN RENDBEN</b>, mehettek. Két perc.</li>
+      <li><b>3. Másold be a második promptot</b>, a végére írd az ötleteteket. Innen már beszélgetés.</li>
+    </ul>
+    <p class="labjegyzet">
+      A böngésző csak az első gombnyomás után látja meg a padet. Ha elsőre nem
+      jelenik meg, nyomj rajta valamit.
+    </p>
+  </section>
+
+  <!-- 5 -->
+  <section class="dia" style="--dia: var(--cyan)" data-cim="Nevezés és csapatkonzol">
+    <div class="kicker">A papír és a QR rajta</div>
+    <h2>Nevezés a szavazásra</h2>
+    <div class="paros">
+      <div>
+        <h3>Az AI-nak elég a papír</h3>
+        <ul>
+          <li>Add oda neki a <b>szervercímet</b> és a <b>8 karakteres kódot</b></li>
+          <li><code class="parancs">nitrogames.mjs allapot</code> bármikor megmondja, mi hiányzik</li>
+          <li>A <b>képeket az AI készíti</b> a játékról, és fel is tölti</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Vagy telefonról, kézzel</h3>
+        <ul>
+          <li>Olvasd be a papíron lévő QR-t: megnyílik a <b>csapatkonzol</b></li>
+          <li>Csapatnév, játék neve, leírás, háttérkép, csempekép</li>
+          <li>Bármilyen méretű képet feltölthettek, az oldal levágja</li>
+        </ul>
+      </div>
+    </div>
+    <p class="labjegyzet">
+      Két dolog viszont rajtatok múlik: a csapatnév és a játék neve.
+    </p>
+  </section>
+
+  <!-- 6 -->
+  <section class="dia" style="--dia: var(--magenta)" data-cim="A játék QR-je">
+    <div class="kicker">Ezt olvassák be a szavazók</div>
+    <h2>A saját QR-kódotok</h2>
+    <ul>
+      <li>A konzolról vagy <code class="parancs">nitrogames.mjs qr</code> paranccsal <b>letöltitek PNG-ben</b></li>
+      <li><b>Tervezzetek köré egy lapot.</b> Díszítsétek fel, építsétek bele a játék világába</li>
+      <li>Ez kerül <b>az asztalotokra</b>, és erről szavaznak rátok</li>
+      <li>Ha nem sikerül beépíteni, <b>szóljatok</b>: nyomtatunk nektek kész lapot</li>
+    </ul>
+    <p class="labjegyzet">
+      A QR mellé a lapra kerül egy begépelhető cím is, szóval akkor is lehet
+      szavazni, ha valakinek nem megy a beolvasás.
+    </p>
+  </section>
+
+  <!-- 7 -->
+  <section class="dia" style="--dia: var(--amber)" data-cim="Ha kértek, segítünk">
+    <div class="kicker">Javaslatok, nem elvárások</div>
+    <h2>Amit még kaptok</h2>
+    <div class="paros">
+      <div>
+        <h3>Kollégafejek</h3>
+        <ul>
+          <li>Egy <b>MCP</b>, amiből az AI lekéri a kollégák kivágott fejét</li>
+          <li>Játékosnak, ellenfélnek, célpontnak, bárminek</li>
+          <li>Kérés nélkül nem nyúl hozzá</li>
+        </ul>
+      </div>
+      <div>
+        <h3>API kulcs</h3>
+        <ul>
+          <li>Hívhattok vele <b>modellt a játékból</b></li>
+          <li>Nem kell hozzá, a starter enélkül is teljes</li>
+        </ul>
+      </div>
+    </div>
+    <p class="labjegyzet">
+      Ezek tippek. Pay-to-win, idétlen humor, vagy bármi más: a tiétek a döntés.
+      A három alapszabályon kívül semmi sem kötelező.
+    </p>
+  </section>
+
+  <!-- 8 -->
+  <section class="dia" style="--dia: var(--green)" data-cim="Csapatmunka">
+    <div class="kicker">Hogy mindenkinek legyen dolga</div>
+    <h2>Osszátok le magatok között</h2>
+    <ul>
+      <li><b>Ne egy ember promptoljon.</b> A gépnél ülő mellett menjen a közös ötletelés</li>
+      <li>Legyen gazdája az <b>arculatnak</b>: hangulat, nevek, a kinyomtatandó lap</li>
+      <li>Oldjátok meg, hogy <b>egyszerre tudjatok dolgozni</b> ugyanazon</li>
+      <li><b>Játsszátok végig mindannyian</b>, mielőtt kiadjátok. Mókás? Érthető? Egy perc alatt lemegy?</li>
+    </ul>
+    <p class="labjegyzet">
+      A pontozásnál a többiek is pontosan ezt fogják érezni, amit ti az első
+      körben. Érdemes rá időt hagyni.
+    </p>
+  </section>
+
+  <!-- 9 -->
+  <section class="dia" style="--dia: var(--cyan)" data-cim="Napközben: kiállítás">
+    <div class="kicker">Amikor lejárt a fejlesztési idő</div>
+    <h2>Kiállítás és szavazás</h2>
+    <ul>
+      <li>Csapatonként <b>egy laptop marad az asztalon</b>, rajta a futó játék</li>
+      <li>Mellette a <b>felmatricázott QR-lapotok</b></li>
+      <li>Mindenki <b>körbejár</b>, és bárki leülhet bárki ellen játszani</li>
+      <li>Aki játszott, <b>ott helyben pontoz</b>: beolvassa az asztalon lévő QR-t</li>
+    </ul>
+    <p class="labjegyzet">
+      Nem kell megvárni senkit, és nem kell sorban menni. Ki-ki a saját
+      tempójában járja végig a kilenc asztalt.
+    </p>
+  </section>
+
+  <!-- 10 -->
+  <section class="dia" style="--dia: var(--magenta)" data-cim="Így szavazol">
+    <div class="kicker">Saját telefon, saját cetli</div>
+    <h2>Így szavazol</h2>
+    <div class="paros">
+      <div>
+        <h3>Egyszer, az elején</h3>
+        <ul>
+          <li>Kapsz egy <b>cetlit</b> egy QR-rel és egy <b>négybetűs kóddal</b></li>
+          <li>Beolvasod, és a telefonod <b>megjegyez</b>. Ennyi</li>
+          <li>Ha nem olvas be, a négy betűt beírhatod kézzel</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Aztán játékonként</h3>
+        <ul>
+          <li>Beolvasod a <b>csapat asztalán</b> lévő QR-t</li>
+          <li>Pontozol pár szempont szerint, írhatsz megjegyzést</li>
+          <li>A főoldalon látod, <b>melyik játék van még hátra</b></li>
+        </ul>
+      </div>
+    </div>
+    <p class="labjegyzet">
+      Egy cetli egy ember. Vigyázz rá, mert azzal jelentkezel be minden
+      szavazásnál.
+    </p>
+  </section>
+
+  <!-- 11 -->
+  <section class="dia" style="--dia: var(--amber)" data-cim="Este">
+    <div class="kicker">A nap vége</div>
+    <h2>Este</h2>
+    <ul>
+      <li><b>Bajnokság</b> a győztes játékból: mindenki egymás ellen</li>
+      <li><b>Közös eredményhirdetés</b>, kivetítve. A pontozás ebben az appban fut</li>
+      <li>A <b>győztesek vihetik a kontrollert</b></li>
+      <li><b>Backstage:</b> megmutatjuk, hogyan épült ez az egész, az adminfelülettel együtt</li>
+    </ul>
+  </section>
+
+  <!-- 12 -->
+  <section class="dia cim" style="--dia: var(--green)" data-cim="Hajrá">
+    <h1 style="color: var(--green)">HAJRÁ</h1>
+    <div class="alcim">Két óra. Kilenc játék.</div>
+    <p class="lead">
+      Ha bármi elakad, szóljatok. A három alapszabályon kívül minden a tiétek.
+    </p>
+  </section>
+
+</div>
+
+<div class="szamlalo"><b id="hol">1</b> / <span id="osszes">1</span> &nbsp; <span id="diaCim"></span></div>
+
+<div class="vezerlo">
+  <button id="elozo" aria-label="Előző dia">&#9664;</button>
+  <button id="kovetkezo" aria-label="Következő dia">&#9654;</button>
+  <button id="teljes">Teljes képernyő</button>
+</div>
+
+<script type="module">
+const diak = Array.from(document.querySelectorAll('.dia'));
+const $ = (id) => document.getElementById(id);
+
+let hol = 0;
+
+function mutat(i, hashbaIs = true) {
+  hol = Math.max(0, Math.min(diak.length - 1, i));
+  diak.forEach((d, n) => d.classList.toggle('on', n === hol));
+
+  const dia = diak[hol];
+  // A keret is a dia színét veszi fel, hogy egyben legyen a kép.
+  document.body.style.setProperty('--dia', getComputedStyle(dia).getPropertyValue('--dia'));
+  $('haladoSav').style.width = `${((hol + 1) / diak.length) * 100}%`;
+  $('hol').textContent = String(hol + 1);
+  $('diaCim').textContent = dia.dataset.cim || '';
+  $('elozo').disabled = hol === 0;
+  $('kovetkezo').disabled = hol === diak.length - 1;
+
+  if (hashbaIs) history.replaceState(null, '', `#${hol + 1}`);
+}
+
+$('osszes').textContent = String(diak.length);
+
+const kovetkezo = () => mutat(hol + 1);
+const elozo = () => mutat(hol - 1);
+
+$('kovetkezo').addEventListener('click', (e) => { e.stopPropagation(); kovetkezo(); });
+$('elozo').addEventListener('click', (e) => { e.stopPropagation(); elozo(); });
+
+$('teljes').addEventListener('click', async (e) => {
+  e.stopPropagation();
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await document.documentElement.requestFullscreen();
+  } catch { /* a bongeszo nem engedte, marad az F11 */ }
+});
+
+document.addEventListener('fullscreenchange', () => {
+  $('teljes').textContent = document.fullscreenElement ? 'Kilépés' : 'Teljes képernyő';
+});
+
+// Kattintás bárhová: tovább. Vetítés közben ez a leggyorsabb.
+document.addEventListener('click', kovetkezo);
+
+document.addEventListener('keydown', (e) => {
+  switch (e.key) {
+    case 'ArrowRight': case 'PageDown': case ' ': case 'Enter':
+      e.preventDefault(); kovetkezo(); break;
+    case 'ArrowLeft': case 'PageUp': case 'Backspace':
+      e.preventDefault(); elozo(); break;
+    case 'Home': e.preventDefault(); mutat(0); break;
+    case 'End': e.preventDefault(); mutat(diak.length - 1); break;
+    default:
+      // Számbillentyűvel egyenesen a diára, ha kérdés jön közben.
+      if (/^[1-9]$/.test(e.key)) mutat(Number(e.key) - 1);
+  }
+});
+
+// Telefonról is lapozható, ha valaki a kezében nézi át.
+let ujjX = null;
+document.addEventListener('touchstart', (e) => { ujjX = e.changedTouches[0].clientX; }, { passive: true });
+document.addEventListener('touchend', (e) => {
+  if (ujjX === null) return;
+  const d = e.changedTouches[0].clientX - ujjX;
+  if (Math.abs(d) > 60) { d < 0 ? kovetkezo() : elozo(); }
+  ujjX = null;
+}, { passive: true });
+
+mutat(Math.max(0, (Number(location.hash.slice(1)) || 1) - 1), false);
+</script>
+</body>
+</html>

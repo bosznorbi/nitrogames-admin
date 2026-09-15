@@ -86,13 +86,22 @@ const foglaltAzonosito = new Set();
  */
 const KEZDOBETUK = LETTERS.slice(0, CSAPAT_DB);
 
+/** Szavazolap-kod: A445531, kiirva A-445-531. Kezzel is begepelheto. */
+function jatekKod(betu) {
+  let jegyek = '';
+  const buf = crypto.randomBytes(6);
+  for (let i = 0; i < 6; i++) jegyek += String(buf[i] % 10);
+  return betu + jegyek;
+}
+
 const csapatok = [];
 for (let n = 1; n <= CSAPAT_DB; n++) {
-  let pid = crypto.randomBytes(9).toString('base64url');
-  while (foglaltAzonosito.has(pid)) pid = crypto.randomBytes(9).toString('base64url');
+  const betu = KEZDOBETUK[n - 1];
+
+  let pid = jatekKod(betu);
+  while (foglaltAzonosito.has(pid)) pid = jatekKod(betu);
   foglaltAzonosito.add(pid);
 
-  const betu = KEZDOBETUK[n - 1];
   const kod = betu + tisztaKod(CODE_ALPHABET, 7, foglaltKod, betu);
   csapatok.push({ szam: n, kod, publicId: pid });
 }
@@ -124,7 +133,7 @@ const tartalom = `/**
  * Generalva: ${new Date().toISOString().slice(0, 10)} a scripts/kodokat-general.mjs szkripttel.
  */
 
-/** Csapatok: a kod a konzol es az API kulcsa, a publicId a szavazolap QR-jeben van. */
+/** Csapatok: a kod a konzol es az API kulcsa, a publicId a szavazolap cimeben van (A-445-531). */
 export const CSAPAT_KODOK = [
 ${csapatok.map((t) => `  { szam: ${t.szam}, kod: '${t.kod}', publicId: '${t.publicId}' },`).join('\n')}
 ];

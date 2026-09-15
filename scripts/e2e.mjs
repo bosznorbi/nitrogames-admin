@@ -297,7 +297,10 @@ check('nem kép elutasítva',
   (await teamApi.fetch('/api/csapat/csempekep', { method: 'POST', headers: { ...headers, 'content-type': 'image/png' }, body: Buffer.from('ez nem kep, csak hosszabb szoveg') })).status === 415);
 
 const qr = await teamApi.fetch('/api/csapat/qr?format=json', { headers });
-check('QR lekérés', qr.status === 200 && qr.body.szavazolap_url.includes('/t/'));
+check('QR lekérés', qr.status === 200 && /\/[A-Z]-\d{3}-\d{3}$/.test(qr.body.szavazolap_url || ''),
+  qr.body.szavazolap_url);
+check('a QR mellé begépelhető kód is jár', /^[A-Z]-\d{3}-\d{3}$/.test(qr.body.beirhato_kod || ''),
+  qr.body.beirhato_kod);
 
 const status1 = await teamApi.fetch('/api/csapat/allapot', { headers });
 check('készültség: minden megvan', status1.body.kesz === true, JSON.stringify(status1.body.hianyzik));
@@ -309,11 +312,25 @@ check('ismeretlen végpont felsorolja a jókat',
   ((await teamApi.fetch('/api/csapat/nincsilyen', { headers })).body?.vegpontok || []).length > 0);
 
 console.log('\n--- szavazas ---');
-const votePublicId = new URL(qr.body.szavazolap_url).pathname.split('/')[2];
+const voteKod = new URL(qr.body.szavazolap_url).pathname.replace(/^\//, '');
+const votePublicId = voteKod.replace(/-/g, '');
 const page = await teszt.fetch(`/api/teams/${votePublicId}`);
 check('szavazólap betölt', page.status === 200 && page.body.team.label === 'Űrpatkányok bosszúja');
 check('a csapat leírása megjelenik', page.body.team.description === 'Két játékos, egy perc.');
 check('kitalált azonosítóra 404', (await teszt.fetch('/api/teams/kitalaltazonosito')).status === 404);
+
+// A begepelt cim minden alakja ugyanoda vigyen: ez a tartalek, ha a QR nem megy.
+check('kötőjeles kóddal is betölt',
+  (await teszt.fetch(`/api/teams/${voteKod}`)).body?.team?.public_id === votePublicId);
+check('kisbetűs kóddal is betölt',
+  (await teszt.fetch(`/api/teams/${voteKod.toLowerCase()}`)).body?.team?.public_id === votePublicId);
+check('a rövid cím a szavazólapot adja',
+  (await teszt.fetch(`/${voteKod}`)).status === 200);
+check('a rövid cím kötőjel nélkül is megy',
+  (await teszt.fetch(`/${votePublicId}`)).status === 200);
+check('a régi /t/ cím is él', (await teszt.fetch(`/t/${votePublicId}`)).status === 200);
+check('nem létező rövid kódra a szavazólap 404-et mond',
+  (await teszt.fetch('/api/teams/Z-000-000')).status === 404);
 
 const scores = Object.fromEntries(page.body.criteria.map((c) => [c.key, c.max]));
 const voted = await teszt.fetch(`/api/teams/${votePublicId}/vote`, { method: 'POST', json: { scores, comment: 'Ütős!' } });

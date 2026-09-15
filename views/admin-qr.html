@@ -94,6 +94,26 @@
 
   #nagyito .sug { display: block; font-size: 14px; color: var(--muted); margin-top: 8px; }
 
+  /* A kézzel begépelhető cím: ez a tartalék, ha a QR nem olvas be. */
+  .beirhato {
+    display: block;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 13px;
+    color: var(--text);
+    background: rgba(46, 232, 255, 0.08);
+    border: 2px solid var(--line);
+    padding: 5px 4px;
+    margin: 10px 0 0;
+    word-break: break-all;
+  }
+
+  .beirhato.nagy {
+    display: inline-block;
+    margin: 2vmin 0 0;
+    font-size: clamp(13px, 2.2vmin, 20px);
+    padding: 8px 12px;
+  }
+
   @media (max-width: 900px) { .qr-grid { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 560px) { .qr-grid { grid-template-columns: 1fr; } }
 </style>
@@ -110,6 +130,7 @@
     </div>
     <div class="row tight">
       <button class="mini" id="frissit" hidden>Hálózati cím frissítése</button>
+      <a class="mini ok" href="/api/admin/print/jatek-qr.pdf?nezet=inline" target="_blank" rel="noopener">Nyomtatási kép</a>
       <a class="mini" href="/api/admin/print/teams.pdf?nezet=inline" target="_blank" rel="noopener">Csapat kezdőcsomag (PDF)</a>
     </div>
   </div>
@@ -126,7 +147,7 @@
 <div id="nagyito" hidden>
   <div>
     <div class="doboz"><img id="nagyKep" alt=""></div>
-    <div class="felirat"><span id="nagyNev"></span><span class="sug">Koppints bárhová a bezáráshoz</span></div>
+    <div class="felirat"><span id="nagyNev"></span><code id="nagyKod" class="beirhato nagy"></code><span class="sug">Koppints bárhová a bezáráshoz</span></div>
   </div>
 </div>
 
@@ -135,6 +156,7 @@ import { api, el, toast } from '/static/js/app.js';
 
 const $ = (id) => document.getElementById(id);
 let teams = [];
+let host = location.host;
 
 function render() {
   if (!teams.length) {
@@ -156,6 +178,8 @@ function render() {
           })
         ),
         el('small', {}, `${t.number}. csapat`),
+        // Aki nem tudja beolvasni a QR-t, ezt gépeli be a böngészőbe.
+        el('code', { class: 'beirhato' }, `${host}/${t.vote_code}`),
         // Ne írjuk ki kétszer ugyanazt, amíg a csapat nem adott nevet a játéknak.
         t.label === `${t.number}. csapat`
           ? el('b', { class: 'muted' }, 'még nincs neve')
@@ -169,6 +193,7 @@ function nagyit(t) {
   $('nagyKep').src = `/api/admin/qr?format=png&size=1200&data=${encodeURIComponent(t.vote_url)}`;
   $('nagyKep').alt = `${t.number}. csapat QR-kódja`;
   $('nagyNev').textContent = t.label === `${t.number}. csapat` ? `${t.number}. csapat` : t.label;
+  $('nagyKod').textContent = `${host}/${t.vote_code}`;
   $('nagyito').hidden = false;
 }
 
@@ -201,6 +226,7 @@ api('/api/admin/overview')
   .then((o) => {
     // Élesben a cím rögzített, ott nincs mit frissíteni.
     $('frissit').hidden = o.base_url_fixed;
+    try { host = new URL(o.base_url).host; } catch { /* marad a bongeszo cime */ }
     return betolt();
   })
   .catch((err) => {

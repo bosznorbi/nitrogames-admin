@@ -27,9 +27,39 @@ export function teamCode() {
   return pick(CODE_ALPHABET, 8);
 }
 
-/** A csapat szavazolapjanak kitalalhatatlan azonositoja a QR-ben. */
-export function publicId() {
-  return crypto.randomBytes(9).toString('base64url');
+/**
+ * A csapat szavazolapjanak azonositoja: A-445-531.
+ *
+ * A QR mellett kezzel is beirhato (nitrogames.../A-445-531), ezert nem
+ * base64url. A kezdobetu a csapat sorszamabol jon, igy ranezesre sem
+ * kevertheto ossze a csapatok sajat XXXX-XXXX kodjaval.
+ */
+export function jatekKod(szam = 1) {
+  const betu = LETTERS[(Math.max(1, Number(szam) || 1) - 1) % LETTERS.length];
+  return betu + pick('0123456789', 6);
+}
+
+const JATEK_KOD = /^([A-Z])-?(\d{3})-?(\d{3})$/;
+
+/** A begepelt alakbol a tarolt alak: a-445-531 -> A445531. Null, ha nem ilyen. */
+export function normalizeJatekKod(value) {
+  const m = JATEK_KOD.exec(String(value ?? '').trim().toUpperCase());
+  return m ? m[1] + m[2] + m[3] : null;
+}
+
+/** Megjelenitesi alak: A-445-531 */
+export function formatJatekKod(id) {
+  const n = normalizeJatekKod(id);
+  return n ? `${n[0]}-${n.slice(1, 4)}-${n.slice(4)}` : String(id ?? '');
+}
+
+/**
+ * A szavazolap cime. Uj kodnal a rovid, begepelheto alak, a regi
+ * base64url azonositoknal marad a /t/ eloteg.
+ */
+export function szavazoUrl(base, publicIdValue) {
+  const n = normalizeJatekKod(publicIdValue);
+  return n ? `${base}/${formatJatekKod(n)}` : `${base}/t/${publicIdValue}`;
 }
 
 /** Kotojel es kisbetu nelkuli alak, hogy a begepelt kod is talaljon. */

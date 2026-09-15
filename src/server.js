@@ -66,6 +66,11 @@ app.get('/', view('index.html'));
 app.get('/belepes', view('belepes.html'));
 app.get('/join', (_req, res) => res.redirect('/belepes'));
 app.get('/t/:publicId', view('vote.html'));
+/*
+ * Kezzel begepelheto szavazolap-cim: /A-445-531, /a445531 es a koztes alakok.
+ * A minta eleg szuk ahhoz, hogy egyetlen masik utvonalat se arnyekoljon be.
+ */
+app.get(/^\/[A-Za-z]-?\d{3}-?\d{3}$/, view('vote.html'));
 app.get('/csapat', view('csapat.html'));
 app.get('/team', (req, res) => res.redirect('/csapat' + (req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '')));
 
@@ -103,6 +108,7 @@ app.post('/api/session/logout', (_req, res) => {
 app.get('/admin/login', view('admin-login.html'));
 app.get('/admin', requireAdminPage, view('admin.html'));
 app.get('/admin/eredmeny', requireAdminPage, view('admin-results.html'));
+app.get('/admin/prezentacio', requireAdminPage, view('prezentacio.html'));
 app.get('/admin/qr-kodok', requireAdminPage, view('admin-qr.html'));
 
 /* ---------- API ---------- */

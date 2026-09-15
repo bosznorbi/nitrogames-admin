@@ -269,3 +269,104 @@ export async function teamSheetPdf(teams, { base = '', repoUrl = '', criteria = 
 
   return toBuffer(doc);
 }
+
+/* ---------- jatek QR, veszterv nyomtatasra ---------- */
+
+/**
+ * Asztali tabla a jatek QR kodjaval, csapatonkent egy fektetett A4 lap.
+ *
+ * A lapon ketszer szerepel ugyanaz az A5-os terv, egymas mellett. A kozepen
+ * osszehajtva megall az asztalon, es mindket iranybol le lehet olvasni; ha
+ * inkabb kettevagjak, ket egyforma A5-os lapot kapnak. Akkor kell, ha egy
+ * csapatnak nem sikerul beepitenie a QR-t a jatekaba.
+ *
+ * @param {Array<{number: number, label: string, name: string|null,
+ *   game_name: string|null, vote_url: string, vote_code: string}>} teams
+ */
+export async function jatekQrPdf(teams, { host = '' } = {}) {
+  const LAP = { width: mm(297), height: mm(210) };
+  const FEL = LAP.width / 2;
+  const PAD = mm(12);
+  const SZ = FEL - 2 * PAD;
+
+  const doc = newDoc('Nitrogames játék QR-kódok');
+  const qrs = await Promise.all(teams.map((t) => qrPngBuffer(t.vote_url, { size: 900 })));
+
+  teams.forEach((team, i) => {
+    doc.addPage({ size: 'A4', layout: 'landscape', margin: 0 });
+
+    // Hajtasvonal: innen hajtva all meg magatol a lap.
+    doc.save().dash(4, { space: 4 }).lineWidth(0.6).strokeColor(CUT)
+      .moveTo(FEL, 0).lineTo(FEL, LAP.height).stroke().undash().restore();
+
+    const fo = team.game_name || team.name || `${team.number}. csapat`;
+    const alcim = team.game_name && team.name ? team.name : null;
+
+    for (const oldal of [0, 1]) {
+      const x = oldal * FEL + PAD;
+
+      // Fejlec: a jel es a NITROGAMES felirat egy sorban, kozepen.
+      const jelH = mm(7);
+      const jelW = jelH * (400 / 368);
+      doc.font('arcade').fontSize(16);
+      const szoW = doc.widthOfString('NITROGAMES', { characterSpacing: 1.2 });
+      const egyutt = jelW + mm(2.4) + szoW;
+      const fx = x + (SZ - egyutt) / 2;
+      doc.image(JEL, fx, mm(16), { height: jelH });
+      doc.fillColor(INK).text('NITROGAMES', fx + jelW + mm(2.4), mm(17), {
+        characterSpacing: 1.2,
+        lineBreak: false,
+      });
+
+      doc.font('arcade').fontSize(12).fillColor(MUTED).text(
+        `${team.number}. CSAPAT`,
+        x, mm(31), { width: SZ, align: 'center', characterSpacing: 1 }
+      );
+
+      // A jatek neve annyira nagy, amennyire ket sorban meg elfer.
+      let meret = 26;
+      doc.font('bold');
+      while (meret > 12 && doc.fontSize(meret).heightOfString(fo, { width: SZ, align: 'center' }) > mm(22)) {
+        meret -= 1;
+      }
+      doc.fontSize(meret).fillColor(INK).text(fo, x, mm(40), {
+        width: SZ,
+        align: 'center',
+        height: mm(22),
+        ellipsis: true,
+      });
+
+      if (alcim) {
+        doc.font('sans').fontSize(11).fillColor(MUTED).text(
+          alcim, x, mm(58), { width: SZ, align: 'center', lineBreak: false }
+        );
+      }
+
+      const qrMeret = mm(74);
+      doc.image(qrs[i], x + (SZ - qrMeret) / 2, mm(64), { width: qrMeret });
+
+      doc.font('bold').fontSize(12).fillColor(INK).text(
+        'Olvasd be, és szavazz erre a játékra',
+        x, mm(145), { width: SZ, align: 'center' }
+      );
+
+      doc.font('sans').fontSize(9).fillColor(MUTED).text(
+        'Ha nem megy a beolvasás, írd be a böngészőbe:',
+        x, mm(156), { width: SZ, align: 'center' }
+      );
+
+      doc.font('bold').fontSize(13).fillColor(INK).text(
+        `${host}/${team.vote_code}`,
+        x, mm(163), { width: SZ, align: 'center' }
+      );
+    }
+  });
+
+  if (!teams.length) {
+    doc.addPage({ size: 'A4', layout: 'landscape', margin: 0 })
+      .font('sans').fontSize(12).fillColor(INK)
+      .text('Még nincs aktív csapat.', MARGIN, MARGIN);
+  }
+
+  return toBuffer(doc);
+}

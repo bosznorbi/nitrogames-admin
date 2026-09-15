@@ -134,20 +134,34 @@ export function requireTeamCode(req, res, next) {
 
 const buckets = new Map();
 
-export function rateLimit({ windowMs = 60_000, max = 30, key = (req) => req.ip } = {}) {
+/**
+ * @param {boolean} csakHiba Csak a hibas valasz szamit bele a keretbe.
+ *   A csapatepiton mind az 50 telefon ugyanarrol a wifi-rol, tehat ugyanarrol
+ *   a publikus IP-rol jon. Ha a sikeres belepes is fogyasztana a keretet,
+ *   egy kozos kodbeirasnal a sokadik ember mar 429-et kapna. Igy viszont
+ *   csak a talalgatas fogy, a jo kodot beiro emberek nem zarjak ki egymast.
+ */
+export function rateLimit({ windowMs = 60_000, max = 30, key = (req) => req.ip, csakHiba = false } = {}) {
   return (req, res, next) => {
     const k = `${req.baseUrl}${req.path}|${key(req)}`;
     const now = Date.now();
     const b = buckets.get(k);
-    if (!b || now > b.reset) {
-      buckets.set(k, { count: 1, reset: now + windowMs });
-      return next();
-    }
-    if (b.count >= max) {
+
+    if (b && now <= b.reset && b.count >= max) {
       res.set('Retry-After', String(Math.ceil((b.reset - now) / 1000)));
       return res.status(429).json({ error: 'rate_limited', message: 'Túl sok kérés, próbáld újra kicsit később.' });
     }
-    b.count++;
+
+    const szamol = () => {
+      const most = Date.now();
+      const akt = buckets.get(k);
+      if (!akt || most > akt.reset) buckets.set(k, { count: 1, reset: most + windowMs });
+      else akt.count++;
+    };
+
+    if (csakHiba) res.on('finish', () => { if (res.statusCode >= 400) szamol(); });
+    else szamol();
+
     next();
   };
 }

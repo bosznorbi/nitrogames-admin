@@ -31,7 +31,9 @@
 <script type="module">
 import { api, el, toast } from '/static/js/app.js';
 
-const publicId = decodeURIComponent(location.pathname.split('/')[2] || '');
+// Ket cim vezet ide: a /t/<azonosito> es a begepelheto /A-445-531.
+const utvonal = location.pathname.split('/').filter(Boolean);
+const publicId = decodeURIComponent(utvonal[0] === 't' ? utvonal[1] || '' : utvonal[0] || '');
 const main = document.getElementById('main');
 const scores = {};
 let data;

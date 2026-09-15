@@ -6,7 +6,7 @@ import { db, teamLabel } from '../db.js';
 import { requireTeamCode, rateLimit } from '../middleware/auth.js';
 import { decodeImagePayload, inspectImage } from '../lib/imageinfo.js';
 import { qrPngBuffer, qrSvg } from '../lib/qr.js';
-import { formatCode } from '../lib/ids.js';
+import { formatCode, formatJatekKod, szavazoUrl } from '../lib/ids.js';
 
 export const teamRouter = express.Router();
 
@@ -53,7 +53,7 @@ function teamView(team, req) {
     szin: t.accent_color || '#7c5cff',
     hatterkep_url: t.background_file ? `${base}/uploads/${t.background_file}` : null,
     csempekep_url: t.icon_file ? `${base}/uploads/${t.icon_file}` : null,
-    szavazolap_url: `${base}/t/${t.public_id}`,
+    szavazolap_url: szavazoUrl(base, t.public_id),
     qr_url: `${base}/api/csapat/qr`,
     frissitve: t.updated_at,
   };
@@ -300,7 +300,7 @@ for (const [utvonal, kind] of [
 teamRouter.get('/qr', async (req, res, next) => {
   try {
     const t = db.prepare('SELECT * FROM teams WHERE id = ?').get(req.team.id);
-    const url = `${baseUrl(req)}/t/${t.public_id}`;
+    const url = szavazoUrl(baseUrl(req), t.public_id);
     const size = Math.min(Math.max(Number(req.query.size) || 800, 128), 2048);
     const format = String(req.query.format || 'png').toLowerCase();
 
@@ -311,6 +311,7 @@ teamRouter.get('/qr', async (req, res, next) => {
         szavazolap_url: url,
         png: `${baseUrl(req)}/api/csapat/qr?format=png&size=1000`,
         svg: `${baseUrl(req)}/api/csapat/qr?format=svg`,
+        beirhato_kod: formatJatekKod(t.public_id),
         tipp: 'Nyomtassátok ki nagyban, és díszítsétek fel. Ezt fogják beolvasni a szavazók.',
       });
     }

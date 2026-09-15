@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import { config } from './config.js';
-import { publicId, teamCode, voterCode, randomToken } from './lib/ids.js';
+import { jatekKod, normalizeJatekKod, teamCode, voterCode, randomToken } from './lib/ids.js';
 import { CSAPAT_KODOK, CETLI_KODOK } from './kodok.js';
 
 /**
@@ -129,8 +129,8 @@ for (const [col, def] of [
 }
 
 // A regi peldanyokban meg lehet public_id vagy api_code nelkuli csapat.
-for (const t of db.prepare('SELECT id, public_id, api_code FROM teams').all()) {
-  if (!t.public_id) db.prepare('UPDATE teams SET public_id = ? WHERE id = ?').run(publicId(), t.id);
+for (const t of db.prepare('SELECT id, public_id, api_code, number FROM teams').all()) {
+  if (!t.public_id) db.prepare('UPDATE teams SET public_id = ? WHERE id = ?').run(egyediJatekKod(t.number), t.id);
   if (!t.api_code) db.prepare('UPDATE teams SET api_code = ? WHERE id = ?').run(teamCode(), t.id);
 }
 
@@ -221,6 +221,29 @@ const ACCENTS = [
   '#c9a227', // arany
 ];
 
+/** Szabad szavazolap-kod a csapat sorszamahoz. Utkozesnel ujat huzunk. */
+function egyediJatekKod(szam) {
+  const letezik = db.prepare('SELECT 1 FROM teams WHERE public_id = ?');
+  for (let i = 0; i < 50; i++) {
+    const kod = jatekKod(szam);
+    if (!letezik.get(kod)) return kod;
+  }
+  throw new Error('Nem sikerult szabad szavazolap-kodot generalni.');
+}
+
+/**
+ * Csapat a szavazolap-kodjabol. A begepelt A-445-531 es a tarolt A445531
+ * alak is talal, a regi base64url azonositok pedig valtozatlanul mennek.
+ */
+export function csapatSzavazoKodbol(ertek) {
+  const nyers = String(ertek ?? '');
+  const lekerdez = db.prepare('SELECT * FROM teams WHERE public_id = ?');
+  const pontos = lekerdez.get(nyers);
+  if (pontos) return pontos;
+  const n = normalizeJatekKod(nyers);
+  return n ? lekerdez.get(n) || null : null;
+}
+
 export function createTeam({ number } = {}) {
   const n = number ?? (db.prepare('SELECT COALESCE(MAX(number), 0) AS m FROM teams').get().m + 1);
   return db
@@ -228,7 +251,7 @@ export function createTeam({ number } = {}) {
       `INSERT INTO teams (public_id, api_code, number, accent_color)
        VALUES (?, ?, ?, ?) RETURNING *`
     )
-    .get(publicId(), teamCode(), n, ACCENTS[(n - 1) % ACCENTS.length]);
+    .get(egyediJatekKod(n), teamCode(), n, ACCENTS[(n - 1) % ACCENTS.length]);
 }
 
 /** A csapat kifele hasznalt neve. A csapat sajat nevet ad magának, ez csak tartalek. */
