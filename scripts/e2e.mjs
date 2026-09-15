@@ -336,7 +336,7 @@ const scores = Object.fromEntries(page.body.criteria.map((c) => [c.key, c.max]))
 const voted = await teszt.fetch(`/api/teams/${votePublicId}/vote`, { method: 'POST', json: { scores, comment: 'Ütős!' } });
 check('szavazat mentése', voted.status === 200 && voted.body.public_id === votePublicId);
 check('részleges szavazat is elmenthető',
-  (await teszt.fetch(`/api/teams/${votePublicId}/vote`, { method: 'POST', json: { scores: { feeling: 3 } } })).status === 200);
+  (await teszt.fetch(`/api/teams/${votePublicId}/vote`, { method: 'POST', json: { scores: { design: 3 } } })).status === 200);
 check('üres szavazat elutasítva',
   (await teszt.fetch(`/api/teams/${votePublicId}/vote`, { method: 'POST', json: { scores: {} } })).status === 400);
 check('belépés nélkül nem lehet szavazni',

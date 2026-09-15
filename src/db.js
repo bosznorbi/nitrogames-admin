@@ -181,12 +181,16 @@ export function allSettings() {
 
 /* ---------- szempontok ---------- */
 
+/*
+ * Ezt a negyet toltjuk be egy uj adatbazisba. Meglevo peldanyt nem irunk
+ * felul: a seedCriteriaIfEmpty csak ures tablanal fut, tehat a kezzel
+ * atirt szempontok a deploy es a nullazas utan is megmaradnak.
+ */
 const DEFAULT_CRITERIA = [
-  { key: 'jatekelmeny', label: 'Játékélmény', description: 'Mennyire szórakoztató ténylegesen játszani vele?', position: 1 },
-  { key: 'feeling', label: 'Feeling', description: 'Design, hangulat, összkép: elvisz a játék világa?', position: 2 },
-  { key: 'kreativitas', label: 'Kreativitás', description: 'Mennyire eredeti, meglepő az ötlet?', position: 3 },
-  { key: 'megvalositas', label: 'Megvalósítás', description: 'Működik, kidolgozott, végigvihető?', position: 4 },
-  { key: 'wow', label: 'Wow-faktor', description: '2 óra alatt ezt? Mennyire ejtett ámulatba?', position: 5 },
+  { key: 'jatekelmeny', label: 'Játékélmény', description: 'Intuitív, szórakoztató, játszható?', position: 1 },
+  { key: 'design', label: 'Design', description: 'Feeling, hangulat, összkép?', position: 2 },
+  { key: 'kreativitas', label: 'Kreativitás', description: 'Eredeti, meglepő, egyedi?', position: 3 },
+  { key: 'wow', label: 'Wow faktor', description: 'Erre elég volt 2 óra??', position: 4 },
 ];
 
 export function seedCriteriaIfEmpty() {
@@ -351,11 +355,13 @@ function migrateTestCode() {
 seedCriteriaIfEmpty();
 
 // A skala 1-5-rol 1-4-re valtott. Az erintetlen alap szempontokat atallitjuk;
-// amit kezzel modositottak, azt nem bantjuk.
+// amit kezzel modositottak, azt nem bantjuk. A lista szandekosan fix: az
+// akkori alapertelmezesre vonatkozik, nem a mindenkorira.
+const REGI_ALAP_KULCSOK = ['jatekelmeny', 'feeling', 'kreativitas', 'megvalositas', 'wow', 'design'];
 db.prepare(
   `UPDATE criteria SET max_score = 4
-   WHERE min_score = 1 AND max_score = 5 AND key IN (${DEFAULT_CRITERIA.map(() => '?').join(',')})`
-).run(...DEFAULT_CRITERIA.map((c) => c.key));
+   WHERE min_score = 1 AND max_score = 5 AND key IN (${REGI_ALAP_KULCSOK.map(() => '?').join(',')})`
+).run(...REGI_ALAP_KULCSOK);
 
 migrateTestCode();
 ensureTestVoter();

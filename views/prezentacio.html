@@ -285,237 +285,106 @@
 
 <div class="szinpad" id="szinpad">
 
-  <!-- 1 -->
+  <!-- Nyitó. A .cim diák kimaradnak a számlálóból. -->
   <section class="dia cim on" style="--dia: var(--cyan)" data-cim="Nyitó">
     <img class="jel" src="/static/img/logo-mark-white.svg" alt="Nitrowise">
     <h1>NITROGAMES</h1>
     <div class="alcim">9 csapat &middot; 9 játék &middot; 2 óra</div>
-    <p class="lead">
-      Ma mindenki épít egy kétjátékos játékot AI-jal, aztán végigjátsszuk
-      egymásét, és telefonról pontozunk.
-    </p>
   </section>
 
-  <!-- 2 -->
-  <section class="dia" style="--dia: var(--magenta)" data-cim="A három alapszabály">
-    <div class="kicker">Csak ez a három kötelező</div>
-    <h2>A három alapszabály</h2>
+  <section class="dia" style="--dia: var(--magenta)" data-cim="A 3 alapszabály">
+    <h2>A 3 alapszabály</h2>
     <div class="kartyak">
       <div class="kartya">
         <span class="sorszam">1</span>
-        <p>Két játékos, egy gépen. Mindkét kontroller irányítson valamit.</p>
+        <p>Két játékos, egy gépen, mindkét kontroller irányítson valamit.</p>
       </div>
       <div class="kartya">
         <span class="sorszam">2</span>
-        <p>Egy percen belül dőljön el, ki a győztes.</p>
+        <p>1 percen belül dőljön el, ki győz.</p>
       </div>
       <div class="kartya">
         <span class="sorszam">3</span>
-        <p>A kör legyen újraindítható a lap újratöltése nélkül.</p>
+        <p>Újraindítható kör újratöltés nélkül.</p>
       </div>
     </div>
-    <p class="labjegyzet">
-      Ezen kívül minden szabad: téma, grafika, mechanika, hangulat. Ami ezután
-      jön, az mind csak javaslat.
-    </p>
+    <p class="labjegyzet">Ezen kívül mindent szabad.</p>
   </section>
 
-  <!-- 3 -->
-  <section class="dia" style="--dia: var(--amber)" data-cim="Mit kaptatok">
-    <div class="kicker">A csomag</div>
-    <h2>Mit kaptatok</h2>
+  <section class="dia" style="--dia: var(--amber)" data-cim="Amit kaptok">
+    <h2>Amit kaptok</h2>
     <div class="paros">
       <div>
         <h3>Az asztalon</h3>
         <ul>
-          <li><b>Két USB SNES kontroller</b></li>
-          <li>Egy <b>papír</b>: a szerver címe, a csapatkódotok és egy QR</li>
-          <li>Egy <b>laptop</b>, amin fejlesztetek</li>
+          <li><b>Két kontroller</b>, ezen játszanak majd a játékosok</li>
+          <li><b>Papír</b>: rajta a csapatkonzolotok, ide töltitek fel a grafikákat</li>
+          <li><b>Laptop vagy mobil</b> az ötleteléshez és a fejlesztéshez</li>
+          <li><b>Claude kulcs</b>, ha nincs céges vagy saját</li>
         </ul>
       </div>
       <div>
-        <h3>A gépen</h3>
+        <h3>Első lépések</h3>
         <ul>
-          <li><b>Kontroller csomag</b>: a padkezelés kész kód, nem kell megírni</li>
-          <li><b>Futó starter</b>: kétjátékos alap, ebből indultok</li>
-          <li><b>AGENTS.md</b> és skillek: az AI ebből tudja a szabályokat</li>
+          <li><b>Kontroller csomag</b> a gépen, a címe a papíron. A kezdő appban próbáljátok ki, jól mennek-e a padek</li>
+          <li>Nyissátok meg a <b>csapatkonzolt</b> a papírról, és nézzétek meg, hogy mindent elértek</li>
+          <li>Ha megvan, jöhet az <b>ötletelés az AI-jal</b></li>
         </ul>
       </div>
     </div>
     <p class="labjegyzet">
-      A starter AI nélkül is fut. Nem az AI írja meg a kontrollerkezelést, az kész.
+      Az AI ismeri a csomagot és a szabályokat. Ha megkapja a csapatkódot,
+      a csapatkonzolt is eléri.
     </p>
   </section>
 
-  <!-- 4 -->
-  <section class="dia" style="--dia: var(--green)" data-cim="Beüzemelés">
-    <div class="kicker">Három lépés, ebből kettő egy bemásolt prompt</div>
-    <h2>Beüzemelés</h2>
+  <section class="dia" style="--dia: var(--cyan)" data-cim="Szavazás">
+    <h2>Szavazás</h2>
     <ul>
-      <li><b>1. Nyisd meg a mappát az AI-jal</b>, és másold be az első promptot a README-ből. Ez előkészít mindent.</li>
-      <li><b>2. Teszteld a két kontrollert.</b> Dugd be, nyomj végig minden gombot. Ha kiírja, hogy <b>MINDEN RENDBEN</b>, mehettek. Két perc.</li>
-      <li><b>3. Másold be a második promptot</b>, a végére írd az ötleteteket. Innen már beszélgetés.</li>
+      <li>Mindenki kap egy <b>papírkát QR-kóddal</b>: ez azonosítja a telefonodat</li>
+      <li>Utána azzal a telefonnal olvasod be a <b>9 csapat 9 QR-kódját</b>, az visz a szavazóoldalra</li>
+      <li>A pontokat <b>később bármikor átírhatod</b></li>
+      <li>Minden csapat <b>kint hagy egy laptopot</b> a futó játékkal, azon játszanak a többiek</li>
+      <li>A laptop mellé tegyétek ki a konzolból letöltött <b>játék-QR-t</b>, ezt szkennelik be a szavazáshoz</li>
     </ul>
     <p class="labjegyzet">
-      A böngésző csak az első gombnyomás után látja meg a padet. Ha elsőre nem
-      jelenik meg, nyomj rajta valamit.
+      Ezen ti is tesztelhetitek: szkenneljétek be, és látjátok, mit lát az,
+      aki rátok szavaz.
     </p>
   </section>
 
-  <!-- 5 -->
-  <section class="dia" style="--dia: var(--cyan)" data-cim="Nevezés és csapatkonzol">
-    <div class="kicker">A papír és a QR rajta</div>
-    <h2>Nevezés a szavazásra</h2>
-    <div class="paros">
-      <div>
-        <h3>Az AI-nak elég a papír</h3>
-        <ul>
-          <li>Add oda neki a <b>szervercímet</b> és a <b>8 karakteres kódot</b></li>
-          <li><code class="parancs">nitrogames.mjs allapot</code> bármikor megmondja, mi hiányzik</li>
-          <li>A <b>képeket az AI készíti</b> a játékról, és fel is tölti</li>
-        </ul>
-      </div>
-      <div>
-        <h3>Vagy telefonról, kézzel</h3>
-        <ul>
-          <li>Olvasd be a papíron lévő QR-t: megnyílik a <b>csapatkonzol</b></li>
-          <li>Csapatnév, játék neve, leírás, háttérkép, csempekép</li>
-          <li>Bármilyen méretű képet feltölthettek, az oldal levágja</li>
-        </ul>
-      </div>
-    </div>
-    <p class="labjegyzet">
-      Két dolog viszont rajtatok múlik: a csapatnév és a játék neve.
-    </p>
-  </section>
-
-  <!-- 6 -->
-  <section class="dia" style="--dia: var(--magenta)" data-cim="A játék QR-je">
-    <div class="kicker">Ezt olvassák be a szavazók</div>
-    <h2>A saját QR-kódotok</h2>
+  <section class="dia" style="--dia: var(--green)" data-cim="Tippek, extrák">
+    <h2>Tippek, extrák</h2>
     <ul>
-      <li>A konzolról vagy <code class="parancs">nitrogames.mjs qr</code> paranccsal <b>letöltitek PNG-ben</b></li>
-      <li><b>Tervezzetek köré egy lapot.</b> Díszítsétek fel, építsétek bele a játék világába</li>
-      <li>Ez kerül <b>az asztalotokra</b>, és erről szavaznak rátok</li>
-      <li>Ha nem sikerül beépíteni, <b>szóljatok</b>: nyomtatunk nektek kész lapot</li>
-    </ul>
-    <p class="labjegyzet">
-      A QR mellé a lapra kerül egy begépelhető cím is, szóval akkor is lehet
-      szavazni, ha valakinek nem megy a beolvasás.
-    </p>
-  </section>
-
-  <!-- 7 -->
-  <section class="dia" style="--dia: var(--amber)" data-cim="Ha kértek, segítünk">
-    <div class="kicker">Javaslatok, nem elvárások</div>
-    <h2>Amit még kaptok</h2>
-    <div class="paros">
-      <div>
-        <h3>Kollégafejek</h3>
-        <ul>
-          <li>Egy <b>MCP</b>, amiből az AI lekéri a kollégák kivágott fejét</li>
-          <li>Játékosnak, ellenfélnek, célpontnak, bárminek</li>
-          <li>Kérés nélkül nem nyúl hozzá</li>
-        </ul>
-      </div>
-      <div>
-        <h3>API kulcs</h3>
-        <ul>
-          <li>Hívhattok vele <b>modellt a játékból</b></li>
-          <li>Nem kell hozzá, a starter enélkül is teljes</li>
-        </ul>
-      </div>
-    </div>
-    <p class="labjegyzet">
-      Ezek tippek. Pay-to-win, idétlen humor, vagy bármi más: a tiétek a döntés.
-      A három alapszabályon kívül semmi sem kötelező.
-    </p>
-  </section>
-
-  <!-- 8 -->
-  <section class="dia" style="--dia: var(--green)" data-cim="Csapatmunka">
-    <div class="kicker">Hogy mindenkinek legyen dolga</div>
-    <h2>Osszátok le magatok között</h2>
-    <ul>
-      <li><b>Ne egy ember promptoljon.</b> A gépnél ülő mellett menjen a közös ötletelés</li>
-      <li>Legyen gazdája az <b>arculatnak</b>: hangulat, nevek, a kinyomtatandó lap</li>
+      <li><b>Kollégafejek MCP</b>: az AI beteszi a kollégák kivágott fejét a játékba</li>
+      <li><b>Osszátok le a munkát</b>, hogy mindenkinek jusson feladat</li>
       <li>Oldjátok meg, hogy <b>egyszerre tudjatok dolgozni</b> ugyanazon</li>
-      <li><b>Játsszátok végig mindannyian</b>, mielőtt kiadjátok. Mókás? Érthető? Egy perc alatt lemegy?</li>
+      <li><b>Nyomtassatok, kreatívkodjatok</b>: fizikai díszlet is lehet a játék köré</li>
+      <li><b>Játsszátok végig mindannyian</b>, mielőtt kiadjátok</li>
     </ul>
-    <p class="labjegyzet">
-      A pontozásnál a többiek is pontosan ezt fogják érezni, amit ti az első
-      körben. Érdemes rá időt hagyni.
-    </p>
   </section>
 
-  <!-- 9 -->
-  <section class="dia" style="--dia: var(--cyan)" data-cim="Napközben: kiállítás">
-    <div class="kicker">Amikor lejárt a fejlesztési idő</div>
-    <h2>Kiállítás és szavazás</h2>
-    <ul>
-      <li>Csapatonként <b>egy laptop marad az asztalon</b>, rajta a futó játék</li>
-      <li>Mellette a <b>felmatricázott QR-lapotok</b></li>
-      <li>Mindenki <b>körbejár</b>, és bárki leülhet bárki ellen játszani</li>
-      <li>Aki játszott, <b>ott helyben pontoz</b>: beolvassa az asztalon lévő QR-t</li>
-    </ul>
-    <p class="labjegyzet">
-      Nem kell megvárni senkit, és nem kell sorban menni. Ki-ki a saját
-      tempójában járja végig a kilenc asztalt.
-    </p>
-  </section>
-
-  <!-- 10 -->
-  <section class="dia" style="--dia: var(--magenta)" data-cim="Így szavazol">
-    <div class="kicker">Saját telefon, saját cetli</div>
-    <h2>Így szavazol</h2>
-    <div class="paros">
-      <div>
-        <h3>Egyszer, az elején</h3>
-        <ul>
-          <li>Kapsz egy <b>cetlit</b> egy QR-rel és egy <b>négybetűs kóddal</b></li>
-          <li>Beolvasod, és a telefonod <b>megjegyez</b>. Ennyi</li>
-          <li>Ha nem olvas be, a négy betűt beírhatod kézzel</li>
-        </ul>
-      </div>
-      <div>
-        <h3>Aztán játékonként</h3>
-        <ul>
-          <li>Beolvasod a <b>csapat asztalán</b> lévő QR-t</li>
-          <li>Pontozol pár szempont szerint, írhatsz megjegyzést</li>
-          <li>A főoldalon látod, <b>melyik játék van még hátra</b></li>
-        </ul>
-      </div>
-    </div>
-    <p class="labjegyzet">
-      Egy cetli egy ember. Vigyázz rá, mert azzal jelentkezel be minden
-      szavazásnál.
-    </p>
-  </section>
-
-  <!-- 11 -->
-  <section class="dia" style="--dia: var(--amber)" data-cim="Este">
-    <div class="kicker">A nap vége</div>
+  <section class="dia" style="--dia: var(--magenta)" data-cim="Este">
     <h2>Este</h2>
     <ul>
-      <li><b>Bajnokság</b> a győztes játékból: mindenki egymás ellen</li>
-      <li><b>Közös eredményhirdetés</b>, kivetítve. A pontozás ebben az appban fut</li>
-      <li>A <b>győztesek vihetik a kontrollert</b></li>
-      <li><b>Backstage:</b> megmutatjuk, hogyan épült ez az egész, az adminfelülettel együtt</li>
+      <li><b>Közös eredményhirdetés</b>, kivetítve</li>
+      <li><b>Bajnokság</b> a győztes játékkal</li>
+      <li>A legjobbak <b>vihetnek a kontrollerekből</b></li>
+      <li><b>Backstage</b>: elmeséljük, hogyan szerveztük, és mit tud az adminfelület</li>
     </ul>
   </section>
 
-  <!-- 12 -->
-  <section class="dia cim" style="--dia: var(--green)" data-cim="Hajrá">
-    <h1 style="color: var(--green)">HAJRÁ</h1>
-    <div class="alcim">Két óra. Kilenc játék.</div>
+  <section class="dia cim" style="--dia: var(--green)" data-cim="Záró">
+    <h1 style="color: var(--green)">SOK SIKERT!</h1>
     <p class="lead">
-      Ha bármi elakad, szóljatok. A három alapszabályon kívül minden a tiétek.
+      Ha bármiben elakadtok, szóljatok. A három alapszabályon kívül minden
+      rajtatok múlik!
     </p>
   </section>
 
 </div>
 
-<div class="szamlalo"><b id="hol">1</b> / <span id="osszes">1</span> &nbsp; <span id="diaCim"></span></div>
+<div class="szamlalo" id="szamlalo"><b id="hol">1</b> / <span id="osszes">1</span> &nbsp; <span id="diaCim"></span></div>
 
 <div class="vezerlo">
   <button id="elozo" aria-label="Előző dia">&#9664;</button>
@@ -525,6 +394,8 @@
 
 <script type="module">
 const diak = Array.from(document.querySelectorAll('.dia'));
+// A címlapok (nyitó, záró) nem számítanak bele a diaszámlálóba.
+const szamozott = diak.filter((d) => !d.classList.contains('cim'));
 const $ = (id) => document.getElementById(id);
 
 let hol = 0;
@@ -537,15 +408,22 @@ function mutat(i, hashbaIs = true) {
   // A keret is a dia színét veszi fel, hogy egyben legyen a kép.
   document.body.style.setProperty('--dia', getComputedStyle(dia).getPropertyValue('--dia'));
   $('haladoSav').style.width = `${((hol + 1) / diak.length) * 100}%`;
-  $('hol').textContent = String(hol + 1);
-  $('diaCim').textContent = dia.dataset.cim || '';
+
+  // A nyitó és a záró dia nem kap sorszámot, azokon a számláló sem látszik.
+  const rang = szamozott.indexOf(dia);
+  $('szamlalo').hidden = rang < 0;
+  if (rang >= 0) {
+    $('hol').textContent = String(rang + 1);
+    $('diaCim').textContent = dia.dataset.cim || '';
+  }
+
   $('elozo').disabled = hol === 0;
   $('kovetkezo').disabled = hol === diak.length - 1;
 
   if (hashbaIs) history.replaceState(null, '', `#${hol + 1}`);
 }
 
-$('osszes').textContent = String(diak.length);
+$('osszes').textContent = String(szamozott.length);
 
 const kovetkezo = () => mutat(hol + 1);
 const elozo = () => mutat(hol - 1);
